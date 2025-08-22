@@ -1,0 +1,14 @@
+# node
+node_modules/
+.expo/
+.expo-shared/
+
+# env
+.env
+
+# cursor 自带的记录
+.specstory/
+.cursorindexing/
+
+# system
+.DS_Store 
