@@ -6,7 +6,6 @@ node_modules/
 # env
 .env
 
-# cursor 自带的记录
 .specstory/
 .cursorindexing/
 
