@@ -10,5 +10,9 @@ node_modules/
 .specstory/
 .cursorindexing/
 
+# Ignore Cursor editor files
+.cursor/
+.cursorindexingignore
+
 # system
 .DS_Store 
