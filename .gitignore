@@ -14,4 +14,10 @@ node_modules/
 .cursorindexingignore
 
 # system
-.DS_Store 
+.DS_Store
+
+.idea/
+
+.git/
+
+backend/venv
