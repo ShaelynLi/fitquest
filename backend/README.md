@@ -56,11 +56,7 @@ backend/firebase_service_account.json
 
 ## 5. Environment Variables
 
-Create a **.env file** in the backend folder and add:
-```bash
-GOOGLE_APPLICATION_CREDENTIALS=backend/firebase_service_account.json
-FIREBASE_WEB_API_KEY=your_firebase_web_api_key
-```
+Create a **.env file** and **service_account.json** in the config folder in backend folder and put your WebAPI key and service account key in it.
 
 ---
 
@@ -75,10 +71,24 @@ The backend will run at http://127.0.0.1:8000
 ## 7. Backend Structure
 ```bash
 backend/
-│── main.py
-│── .env
-│── firebase_service_account.json   # (ignored in git)
-│── venv/                           # virtual environment
-
+├─ app/
+│  ├─ main.py                  # only responsible for FastAPI、CORS、Middlewares、regist routers
+│  ├─ api/                     # useful APIs
+│  │  ├─ __init__.py
+│  │  └─ auth.py               
+│  ├─ core/                    
+│  │  ├─ __init__.py
+│  │  ├─ settings.py           # load .env and .json
+│  │  └─ firebase.py           # initialization of firebase
+│  ├─ dependencies/            # useful dependencies
+│  │  ├─ __init__.py
+│  │  └─ auth.py               
+│  └─ schemas/                 # db models
+│     ├─ __init__.py
+│     └─ users.py               
+├─ config/
+│  ├─ .env                     # Web API Key
+│  └─ firebase_service_account.json  # private service account
+└─ requirements.txt
 ```
 

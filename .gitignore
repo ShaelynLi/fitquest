@@ -21,3 +21,4 @@ node_modules/
 .git/
 
 backend/venv
+backend/config
