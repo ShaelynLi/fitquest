@@ -1,6 +1,7 @@
 # app/api/auth.py
 import httpx
 from fastapi import APIRouter, HTTPException, status, Depends
+from firebase_admin import firestore
 from app.core.firebase import auth_client, db
 from app.core.settings import settings
 from app.schemas.users import RegisterRequest, LoginRequest, TokenResponse
