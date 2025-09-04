@@ -68,9 +68,17 @@ def add_points(req: WorkoutAddPointsRequest, user=Depends(get_current_user)):
             "points": [p.dict() for p in req.points]
         })
 
-        session_ref.update({"points_count": db.field_path("points_count")})
         snap = session_ref.get()
-        count = (snap.to_dict() or {}).get("points_count", 0) + len(req.points)
+        data = snap.to_dict() or {}
+        current_count = data.get("points_count", 0)
+
+        if isinstance(current_count, str):
+            try:
+                current_count = int(current_count)
+            except ValueError:
+                current_count = 0
+                
+        count = current_count + len(req.points)
         session_ref.update({"points_count": count})
 
         return {"ok": True, "added": len(req.points)}
