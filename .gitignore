@@ -22,3 +22,8 @@ node_modules/
 
 backend/venv
 backend/config
+
+__pycache__/
+*.pyc
+
+
