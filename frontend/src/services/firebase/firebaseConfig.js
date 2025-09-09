@@ -1,9 +1,7 @@
-// Firebase configuration
+// Firebase configuration (no initialization here)
 // frontend/firebase/firebaseConfig.js
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 
-// 引入 .env 变量
+// Read .env variables via react-native-dotenv
 import {
   FIREBASE_API_KEY,
   FIREBASE_AUTH_DOMAIN,
@@ -14,7 +12,7 @@ import {
   FIREBASE_MEASUREMENT_ID
 } from '@env';
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: FIREBASE_API_KEY,
   authDomain: FIREBASE_AUTH_DOMAIN,
   projectId: FIREBASE_PROJECT_ID,
@@ -23,6 +21,3 @@ const firebaseConfig = {
   appId: FIREBASE_APP_ID,
   measurementId: FIREBASE_MEASUREMENT_ID,
 };
-
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
