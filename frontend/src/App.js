@@ -11,6 +11,14 @@ import RunScreen from './screens/RunScreen';
 import PlusScreen from './screens/PlusScreen';
 import FoodScreen from './screens/FoodScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import {
+  useFonts,
+  PressStart2P_400Regular,
+} from '@expo-google-fonts/press-start-2p';
+import {
+  Montserrat_400Regular,
+  Montserrat_700Bold,
+} from '@expo-google-fonts/montserrat';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -97,6 +105,14 @@ function RootNavigator() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    PressStart2P_400Regular,
+    Montserrat_400Regular,
+    Montserrat_700Bold,
+  });
+
+  if (!fontsLoaded) return null;
+
   return (
     <AuthProvider>
       <NavigationContainer>
