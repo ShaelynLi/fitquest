@@ -8,8 +8,8 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
 import RunScreen from './screens/RunScreen';
-import QuestsScreen from './screens/QuestsScreen';
-import CollectionScreen from './screens/CollectionScreen';
+import PlusScreen from './screens/PlusScreen';
+import FoodScreen from './screens/FoodScreen';
 import ProfileScreen from './screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
@@ -17,12 +17,64 @@ const Tab = createBottomTabNavigator();
 
 function Tabs() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Run" component={RunScreen} />
-      <Tab.Screen name="Quests" component={QuestsScreen} />
-      <Tab.Screen name="Collection" component={CollectionScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+    <Tab.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#f8f9fa',
+          borderTopWidth: 1,
+          borderTopColor: '#e9ecef',
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 60,
+        },
+        tabBarActiveTintColor: '#111827',
+        tabBarInactiveTintColor: '#6b7280',
+      }}
+    >
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen}
+        options={{
+          tabBarLabel: 'Home',
+        }}
+      />
+      <Tab.Screen 
+        name="Run" 
+        component={RunScreen}
+        options={{
+          tabBarLabel: 'Run',
+        }}
+      />
+      <Tab.Screen 
+        name="Plus" 
+        component={PlusScreen}
+        options={{
+          tabBarLabel: '',
+          tabBarStyle: {
+            backgroundColor: '#f8f9fa',
+            borderTopWidth: 1,
+            borderTopColor: '#e9ecef',
+            paddingBottom: 8,
+            paddingTop: 8,
+            height: 60,
+          },
+        }}
+      />
+      <Tab.Screen 
+        name="Food" 
+        component={FoodScreen}
+        options={{
+          tabBarLabel: 'Food',
+        }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+        }}
+      />
     </Tab.Navigator>
   );
 }
