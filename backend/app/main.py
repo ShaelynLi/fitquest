@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.settings import settings
 from app.api.auth import router as auth_router
 from app.api.workout import router as workout_router
+from app.api.meals import router as meals_router
 
 app = FastAPI()
 
@@ -20,3 +21,4 @@ def root():
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(workout_router, prefix="/workouts", tags=["workouts"])
+app.include_router(meals_router)
