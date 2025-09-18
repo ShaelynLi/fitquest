@@ -1,126 +1,153 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { typography, spacing, colors, card } from '../theme';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated } from 'react-native';
+import { typography, spacing, colors, globalStyles } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import PetComponent from '../components/PetComponent';
 
-export default function HomeScreen() {
-  const { user, logout } = useAuth();
-  
-  // Mock data - will be replaced with real data from API
-  const petData = {
-    name: "Cinderburrow",
-    level: 5,
-    xp: 750,
+/**
+ * HomeScreen Component - Main Dashboard
+ *
+ * The primary hub where users interact with their virtual pet and view daily progress.
+ * Features:
+ * - Virtual pet display with Pokemon evolution system
+ * - Pet interaction (feed, play, clean) affects stats and XP
+ * - Daily progress stats (steps, calories, distance, meals)
+ * - Collection progress overview
+ *
+ * Pet Evolution System:
+ * - Starts as Bulbasaur (level 1)
+ * - Evolves to Ivysaur at level 10
+ * - Evolves to Venusaur at level 20
+ * - XP gained through interactions and activities
+ *
+ * Navigation: Provides access to Pokedex via PetComponent
+ */
+export default function HomeScreen({ navigation }) {
+  const { user } = useAuth();
+
+  // TEMPORARY: Mock pet status data - will be replaced with real data from backend
+  const [happiness, setHappiness] = useState(85);
+  const [energy, setEnergy] = useState(72);
+  const [health, setHealth] = useState(90);
+
+  // Pet data with Pokemon evolution system
+  // NOTE: pokemonId should be '1' for Bulbasaur, currently shows Ivysaur (ID '2')
+  const [petData, setPetData] = useState({
+    name: 'BULBASAUR',
+    level: 50, // High level for demo purposes
+    xp: 1,
     maxXp: 1000,
-    mood: "Happy",
-    size: 'large',
-  };
-  
-  const nutritionData = {
-    calories: 1250,
-    targetCalories: 2000,
-    protein: 85,
-    carbs: 120,
-    fat: 45,
-    proteinTarget: 150,
-    carbsTarget: 200,
-    fatTarget: 80
-  };
-  
-  const runningData = {
-    monthlyDistance: 45.2,
-    dailySteps: 8500,
-    weeklyRuns: 3,
-    totalRuns: 28
+    stage: 'young', // Evolution stages: young -> adult -> ultimate
+    species: 'grass',
+    pokemonId: '1', // Bulbasaur ID (fixed from previous value)
+    pokemonVariant: 'showdown', // Uses generation-v animated sprites
+    needsAttention: false,
+  });
+
+  // Handle pet interaction with different actions
+  const handlePetPlay = (action = 'play') => {
+    // Different actions affect different stats
+    const actionEffects = {
+      feed: { energy: 10, health: 5, happiness: 3, xp: 15 },
+      play: { energy: -5, health: 2, happiness: 10, xp: 10 },
+      clean: { energy: 0, health: 8, happiness: 5, xp: 5 },
+    };
+
+    const effects = actionEffects[action] || actionEffects.play;
+
+    // Update status meters
+    setEnergy(prev => Math.max(0, Math.min(100, prev + effects.energy)));
+    setHealth(prev => Math.max(0, Math.min(100, prev + effects.health)));
+    setHappiness(prev => Math.max(0, Math.min(100, prev + effects.happiness)));
+
+    // Add XP for interaction
+    setPetData(prev => {
+      const newXp = prev.xp + effects.xp;
+      let newLevel = prev.level;
+      let newStage = prev.stage;
+      let newName = prev.name;
+      let newPokemonId = prev.pokemonId;
+
+      // Level up logic
+      if (newXp >= prev.maxXp) {
+        newLevel += 1;
+        // Evolution logic - Bulbasaur line progression
+        if (newLevel >= 10 && prev.stage === 'young') {
+          newStage = 'adult';
+          newName = 'IVYSAUR';
+          newPokemonId = '2';
+        } else if (newLevel >= 20 && prev.stage === 'adult') {
+          newStage = 'ultimate';
+          newName = 'VENUSAUR';
+          newPokemonId = '3';
+        }
+      }
+
+      return {
+        ...prev,
+        xp: newXp >= prev.maxXp ? newXp - prev.maxXp : newXp,
+        level: newLevel,
+        stage: newStage,
+        name: newName,
+        pokemonId: newPokemonId,
+        maxXp: newLevel * 100, // Increase XP requirement
+      };
+    });
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Welcome back!</Text>
-          <Text style={styles.userName}>{user?.email?.split('@')[0] || 'User'}</Text>
-        </View>
-        <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* MAIN STAGE: Pet's Environment (Now includes all status info) */}
+      <PetComponent
+        pet={petData}
+        onPlay={handlePetPlay}
+        statusMeters={{ energy, health, happiness }}
+        navigation={navigation}
+      />
 
-      {/* Pet Section */}
-      <View style={styles.petSection}>
-        <Text style={styles.sectionTitle}>Your Pet Companion</Text>
-        <View style={styles.petCard}>
-          <PetComponent 
-            petData={petData}
-            onInteraction={() => {
-              // Handle pet interaction (XP gain, sound, etc.)
-              console.log('Pet interacted! +10 XP');
-            }}
-          />
-          <View style={styles.xpSection}>
-            <Text style={styles.xpLabel}>XP Progress</Text>
-            <View style={styles.xpBarContainer}>
-              <View style={[styles.xpBar, { width: `${(petData.xp / petData.maxXp) * 100}%` }]} />
-            </View>
-            <Text style={styles.xpText}>{petData.xp} / {petData.maxXp} XP</Text>
+      {/* STATS SECTION - TEMPORARY: Mock data for demonstration */}
+      <View style={styles.section}>
+        <Text style={globalStyles.sectionHeader}>Today's Progress</Text>
+        <View style={styles.statsGrid}>
+          {/* Distance Card */}
+          <View style={[styles.statCard, { backgroundColor: colors.yellow[100] }]}>
+            <Text style={globalStyles.largeNumber}>2.3</Text>
+            <Text style={globalStyles.secondaryText}>km walked</Text>
+          </View>
+          {/* Calories Card */}
+          <View style={[styles.statCard, { backgroundColor: colors.blue[100] }]}>
+            <Text style={globalStyles.largeNumber}>420</Text>
+            <Text style={globalStyles.secondaryText}>calories</Text>
           </View>
         </View>
-      </View>
-
-      {/* Nutrition Section */}
-      <View style={styles.nutritionSection}>
-        <Text style={styles.sectionTitle}>Today's Nutrition</Text>
-        <View style={styles.nutritionCard}>
-          <View style={styles.caloriesSection}>
-            <Text style={styles.caloriesNumber}>{nutritionData.calories}</Text>
-            <Text style={styles.caloriesLabel}>calories</Text>
-            <Text style={styles.caloriesTarget}>of {nutritionData.targetCalories} goal</Text>
+        <View style={styles.statsGrid}>
+          {/* Steps Card */}
+          <View style={[styles.statCard, { backgroundColor: colors.green[100] }]}>
+            <Text style={globalStyles.largeNumber}>1,240</Text>
+            <Text style={globalStyles.secondaryText}>steps</Text>
           </View>
-          <View style={styles.macrosSection}>
-            <View style={styles.macroItem}>
-              <Text style={styles.macroLabel}>Protein</Text>
-              <Text style={styles.macroValue}>{nutritionData.protein}g</Text>
-              <Text style={styles.macroTarget}>/ {nutritionData.proteinTarget}g</Text>
-            </View>
-            <View style={styles.macroItem}>
-              <Text style={styles.macroLabel}>Carbs</Text>
-              <Text style={styles.macroValue}>{nutritionData.carbs}g</Text>
-              <Text style={styles.macroTarget}>/ {nutritionData.carbsTarget}g</Text>
-            </View>
-            <View style={styles.macroItem}>
-              <Text style={styles.macroLabel}>Fat</Text>
-              <Text style={styles.macroValue}>{nutritionData.fat}g</Text>
-              <Text style={styles.macroTarget}>/ {nutritionData.fatTarget}g</Text>
-            </View>
+          {/* Meals Card */}
+          <View style={[styles.statCard, { backgroundColor: colors.purple[100] }]}>
+            <Text style={globalStyles.largeNumber}>3</Text>
+            <Text style={globalStyles.secondaryText}>meals logged</Text>
           </View>
         </View>
       </View>
 
-      {/* Running Metrics Section */}
-      <View style={styles.runningSection}>
-        <Text style={styles.sectionTitle}>Running Stats</Text>
-        <View style={styles.runningCard}>
-          <View style={styles.metricRow}>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{runningData.monthlyDistance}km</Text>
-              <Text style={styles.metricLabel}>This Month</Text>
-            </View>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{runningData.dailySteps.toLocaleString()}</Text>
-              <Text style={styles.metricLabel}>Steps Today</Text>
-            </View>
+      <View style={globalStyles.separator} />
+
+
+      {/* COLLECTION SECTION */}
+      <View style={styles.section}>
+        <Text style={globalStyles.sectionHeader}>Collection</Text>
+        <View style={[styles.collectionCard, { backgroundColor: colors.pink[100] }]}>
+          <View style={styles.collectionStats}>
+            <Text style={globalStyles.mediumNumber}>8</Text>
+            <Text style={globalStyles.secondaryText}>of 25 collected</Text>
           </View>
-          <View style={styles.metricRow}>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{runningData.weeklyRuns}</Text>
-              <Text style={styles.metricLabel}>Runs This Week</Text>
-            </View>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{runningData.totalRuns}</Text>
-              <Text style={styles.metricLabel}>Total Runs</Text>
-            </View>
+          <View style={styles.recentCollection}>
+            <Text style={globalStyles.bodyText}>Recent discoveries</Text>
+            <Text style={styles.recentPets}>🐶 🐱 🐦</Text>
           </View>
         </View>
       </View>
@@ -132,181 +159,52 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: 60, // Add top padding for status bar
+    paddingBottom: 100, // Add bottom padding for floating tab bar
   },
-  header: {
+
+  // Section styling
+  section: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+
+  // Stats Grid
+  statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.lg,
-    paddingTop: 60,
-    backgroundColor: colors.surface,
-  },
-  greeting: {
-    fontFamily: typography.body,
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  userName: {
-    fontFamily: typography.heading,
-    fontSize: 16,
-    color: colors.textPrimary,
-    lineHeight: 22,
-    marginTop: spacing.xs,
-  },
-  logoutButton: {
-    backgroundColor: colors.danger,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 6,
-  },
-  logoutText: {
-    color: 'white',
-    fontFamily: typography.bodyBold,
-    fontSize: 12,
-  },
-  sectionTitle: {
-    fontFamily: typography.heading,
-    fontSize: 14,
-    color: colors.textPrimary,
     marginBottom: spacing.md,
   },
-  petSection: {
-    padding: spacing.lg,
-  },
-  petCard: card.container,
-  petInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  petImage: {
-    fontSize: 48,
-    marginRight: 16,
-  },
-  petDetails: {
+  statCard: {
     flex: 1,
-  },
-  petName: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  petLevel: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  petMood: {
-    fontSize: 14,
-    color: '#10b981',
-    marginTop: 4,
-  },
-  xpSection: {
-    marginTop: 8,
-  },
-  xpLabel: {
-    fontFamily: typography.body,
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  xpBarContainer: {
-    height: 8,
-    backgroundColor: colors.border,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  xpBar: {
-    height: '100%',
-    backgroundColor: colors.accent,
-    borderRadius: 4,
-  },
-  xpText: {
-    fontFamily: typography.body,
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  nutritionSection: {
+    alignItems: 'center',
+    marginHorizontal: spacing.xs,
     padding: spacing.lg,
-    paddingTop: 0,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.black,
   },
-  nutritionCard: card.container,
-  caloriesSection: {
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  caloriesNumber: {
-    fontFamily: typography.bodyBold,
-    fontSize: 32,
-    color: colors.textPrimary,
-  },
-  caloriesLabel: {
-    fontFamily: typography.body,
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  caloriesTarget: {
-    fontFamily: typography.body,
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  macrosSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  macroItem: {
-    alignItems: 'center',
-  },
-  macroLabel: {
-    fontFamily: typography.body,
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  macroValue: {
-    fontFamily: typography.bodyBold,
-    fontSize: 18,
-    color: colors.textPrimary,
-  },
-  macroTarget: {
-    fontFamily: typography.body,
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  runningSection: {
+
+  // Collection card
+  collectionCard: {
     padding: spacing.lg,
-    paddingTop: 0,
-    paddingBottom: spacing.xl,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.black,
   },
-  runningCard: card.container,
-  metricRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-  },
-  metricItem: {
+
+
+  // Collection styles
+  collectionStats: {
     alignItems: 'center',
-    flex: 1,
+    marginBottom: spacing.lg,
   },
-  metricValue: {
-    fontFamily: typography.bodyBold,
-    fontSize: 22,
-    color: colors.textPrimary,
+  recentCollection: {
+    alignItems: 'center',
   },
-  metricLabel: {
-    fontFamily: typography.body,
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    textAlign: 'center',
+  recentPets: {
+    fontSize: typography.sizes.xl,
+    marginTop: spacing.sm,
   },
 });
 
