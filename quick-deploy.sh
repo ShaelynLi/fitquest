@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 🚀 FitQuest Quick Deployment Script
-# Usage: ./quick-deploy-en.sh [backend|frontend|all]
+# FitQuest Quick Deployment Script
+# Usage: ./quick-deploy.sh [backend|frontend|all]
 
 set -e  # Stop immediately on error
 
