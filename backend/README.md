@@ -38,7 +38,7 @@ venv\Scripts\activate
 Install FastAPI, Uvicorn, Firebase Admin SDK, and supporting libraries:
 
 ```bash
-pip install fastapi uvicorn[standard] firebase-admin httpx python-dotenv
+pip install fastapi uvicorn[standard] firebase-admin httpx python-dotenv "pydantic[email]"
 ```
 
 ## 4. Firebase Setup
