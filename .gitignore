@@ -31,3 +31,6 @@ __pycache__/
 # Python venvs
 .venv/
 backend/.venv/
+
+venv/
+
