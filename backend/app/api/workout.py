@@ -107,17 +107,35 @@ def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
         for doc in points_col:
             chunk = doc.to_dict() or {}
             pts.extend(chunk.get("points", []))
-
         pts = sorted(pts, key=lambda p: p.get("t_ms", 0))
+
+        # Calculate the total distance
         total_m = 0.0
         for i in range(1, len(pts)):
             a, b = pts[i-1], pts[i]
             total_m += _haversine_m(a["lat"], a["lng"], b["lat"], b["lng"])
 
+        # Total duration
         duration_s = max(0, (req.end_time_ms - start_ms) / 1000.0)
+
         pace = None
         if total_m > 1:
             pace = (duration_s / 60.0) / (total_m / 1000.0)  # min/km
+
+        # Calculate calories
+        user_doc = db.collection("users").document(user["uid"]).get()
+        weight_kg = user_doc.to_dict().get("weight_kg", 70)  # Default weight: 70 kg
+
+        METS = {
+            "run": 9.8,
+            "bike": 8.0,
+            "gym": 6.0,
+        }
+        workout_type = data.get("workout_type", "run")
+        met = METS.get(workout_type, 8.0)
+
+        duration_h = duration_s / 3600.0
+        calories = met * weight_kg * duration_h
 
         session_ref.update({
             "end_time_ms": req.end_time_ms,
@@ -125,6 +143,7 @@ def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
             "distance_m": float(total_m),
             "duration_s": float(duration_s),
             "pace_min_per_km": pace,
+            "calories": calories,
         })
 
         updated = session_ref.get().to_dict() or {}
@@ -138,6 +157,7 @@ def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
             duration_s=updated.get("duration_s", 0.0),
             pace_min_per_km=updated.get("pace_min_per_km"),
             points_count=updated.get("points_count", 0),
+            calories=updated.get("calories"),
         )
     except HTTPException:
         raise

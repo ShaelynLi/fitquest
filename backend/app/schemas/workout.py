@@ -32,4 +32,5 @@ class WorkoutSessionResponse(BaseModel):
     duration_s: float = 0.0
     pace_min_per_km: Optional[float] = None
     points_count: int = 0
+    calories: Optional[float] = None
     status: str = "active"
