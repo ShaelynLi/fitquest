@@ -2,7 +2,7 @@
 
 A React Native mobile app with FastAPI backend that combines fitness tracking and nutrition logging with a pixel-art pet collection game.
 
-## 🏗️ Architecture
+## Architecture
 
 - **Frontend**: React Native with Expo (iOS/Android)
 - **Backend**: FastAPI with Firebase Authentication & Firestore
@@ -16,7 +16,7 @@ A React Native mobile app with FastAPI backend that combines fitness tracking an
 - Firebase project with Authentication and Firestore enabled
 - Expo CLI (`npm install -g @expo/cli`)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Backend Setup
 
@@ -171,7 +171,7 @@ npx expo start --clear  # Clear cache
 4. Register a new account or login
 5. Navigate through the 5-tab interface
 
-## 🔐 Environment Variables
+## Environment Variables
 
 ### Backend (`backend/config/.env`)
 ```env
@@ -185,6 +185,6 @@ CORS_ORIGINS=*
 BACKEND_URL=http://localhost:8000
 ```
 
-## 📄 License
+## License
 
 This project is part of COMP90018 - Mobile Computing Systems Programming.
