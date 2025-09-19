@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.settings import settings
 from app.api.auth import router as auth_router
 from app.api import meals #new
+from app.api import scanner #new
 
 app = FastAPI()
 
@@ -21,3 +22,4 @@ def root():
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(meals.router, prefix="/api") #new
+app.include_router(scanner.router, prefix="/api") #new
