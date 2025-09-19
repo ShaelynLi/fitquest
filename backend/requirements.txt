@@ -1,0 +1,12 @@
+# Backend API Requirements
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+httpx==0.28.1
+python-dotenv==1.1.1
+firebase-admin==7.1.0
+
+# Additional dependencies (auto-installed with above)
+# pydantic - for data validation (comes with FastAPI)
+# starlette - ASGI framework (comes with FastAPI)
+# click - CLI utilities (comes with uvicorn)
+# certifi - SSL certificates (comes with httpx)

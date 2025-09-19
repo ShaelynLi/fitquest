@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -39,7 +40,7 @@ import { colors, spacing, typography, globalStyles } from '../theme';
  * - Nutrition insights and recommendations
  * - Weekly/monthly nutrition analytics
  */
-export default function FoodScreen({ navigation }) {
+export default function FoodScreen({ navigation, route }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Generate array of dates for calendar slider (7 days before and after today)
@@ -101,6 +102,19 @@ export default function FoodScreen({ navigation }) {
 
   const dailyTotals = calculateDailyTotals();
 
+  // Handle food selection result from FoodSearchScreen
+  useFocusEffect(
+    React.useCallback(() => {
+      if (route.params?.selectedFood && route.params?.mealType) {
+        const { selectedFood, mealType } = route.params;
+        handleFoodSelected(selectedFood, mealType);
+
+        // Clear the params to prevent duplicate additions
+        navigation.setParams({ selectedFood: undefined, mealType: undefined });
+      }
+    }, [route.params?.selectedFood, route.params?.mealType])
+  );
+
   // Date formatting and utilities
   const formatDateSlider = (date) => {
     const today = new Date();
@@ -151,7 +165,6 @@ export default function FoodScreen({ navigation }) {
   const openFoodSearch = (mealType) => {
     navigation.navigate('FoodSearch', {
       mealType,
-      onFoodSelected: handleFoodSelected,
     });
   };
 

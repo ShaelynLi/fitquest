@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Barcodes for Food App</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .barcode-container { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .barcode { margin: 10px 0; }
+        .info { color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Test Barcodes for Food Scanner</h1>
+    <p>Display these on your computer screen and scan with your phone camera:</p>
+
+    <div class="barcode-container">
+        <h3>Barcode 1: Spanish Manzanilla Olives</h3>
+        <div class="barcode">
+            <svg width="200" height="80">
+                <!-- Simple barcode representation -->
+                <rect x="0" y="10" width="2" height="50" fill="black"/>
+                <rect x="4" y="10" width="1" height="50" fill="black"/>
+                <rect x="7" y="10" width="3" height="50" fill="black"/>
+                <rect x="12" y="10" width="1" height="50" fill="black"/>
+                <rect x="15" y="10" width="2" height="50" fill="black"/>
+                <rect x="19" y="10" width="1" height="50" fill="black"/>
+                <rect x="22" y="10" width="2" height="50" fill="black"/>
+                <rect x="26" y="10" width="1" height="50" fill="black"/>
+                <rect x="29" y="10" width="3" height="50" fill="black"/>
+                <rect x="34" y="10" width="2" height="50" fill="black"/>
+                <rect x="38" y="10" width="1" height="50" fill="black"/>
+                <rect x="41" y="10" width="2" height="50" fill="black"/>
+                <text x="0" y="75" font-size="12">012345678905</text>
+            </svg>
+        </div>
+        <div class="info">Barcode: 012345678905</div>
+    </div>
+
+    <div class="barcode-container">
+        <h3>Barcode 2: Cheddar Cheese Curds</h3>
+        <div class="barcode">
+            <svg width="200" height="80">
+                <rect x="0" y="10" width="1" height="50" fill="black"/>
+                <rect x="3" y="10" width="2" height="50" fill="black"/>
+                <rect x="7" y="10" width="1" height="50" fill="black"/>
+                <rect x="10" y="10" width="3" height="50" fill="black"/>
+                <rect x="15" y="10" width="1" height="50" fill="black"/>
+                <rect x="18" y="10" width="2" height="50" fill="black"/>
+                <rect x="22" y="10" width="1" height="50" fill="black"/>
+                <rect x="25" y="10" width="2" height="50" fill="black"/>
+                <rect x="29" y="10" width="3" height="50" fill="black"/>
+                <rect x="34" y="10" width="1" height="50" fill="black"/>
+                <rect x="37" y="10" width="2" height="50" fill="black"/>
+                <rect x="41" y="10" width="1" height="50" fill="black"/>
+                <text x="0" y="75" font-size="12">123456789012</text>
+            </svg>
+        </div>
+        <div class="info">Barcode: 123456789012</div>
+    </div>
+
+    <div class="barcode-container">
+        <h3>Instructions:</h3>
+        <ol>
+            <li>Open your food app on your phone</li>
+            <li>Go to the Food Search screen</li>
+            <li>Tap the barcode icon in the search bar</li>
+            <li>Point your camera at one of these barcodes on your computer screen</li>
+            <li>The app should automatically detect and search for the food</li>
+        </ol>
+    </div>
+
+    <div class="barcode-container">
+        <h3>Manual Testing:</h3>
+        <p>You can also manually test the API endpoints:</p>
+        <ul>
+            <li>
+                <strong>Working barcode:</strong><br>
+                <code>curl "http://localhost:8000/foods/barcode/012345678905"</code>
+            </li>
+            <li>
+                <strong>Invalid barcode:</strong><br>
+                <code>curl "http://localhost:8000/foods/barcode/999999999999"</code>
+            </li>
+        </ul>
+    </div>
+</body>
+</html>
