@@ -190,3 +190,27 @@ def get_workout(session_id: str, user=Depends(get_current_user)):
         raise
     except Exception as e:
         raise HTTPException(500, f"Failed to get workout: {e}")
+
+# Get GPS points (trajectory) of a specific workout session
+@router.get("/{session_id}/points")
+def get_workout_points(session_id: str, user=Depends(get_current_user)):
+    try:
+        session_ref = _session_doc(user["uid"], session_id)
+        snap = session_ref.get()
+        if not snap.exists:
+            raise HTTPException(404, "Session not found")
+
+        points_col = session_ref.collection("points").stream()
+        pts = []
+        for doc in points_col:
+            chunk = doc.to_dict() or {}
+            pts.extend(chunk.get("points", []))
+
+        pts = sorted(pts, key=lambda p: p.get("t_ms", 0))
+
+        return {"session_id": session_id, "points": pts}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to get workout points: {e}")
+
