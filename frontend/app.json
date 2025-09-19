@@ -4,6 +4,7 @@
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
+    "main": "index.js",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -28,8 +29,19 @@
       "permissions": [
         "CAMERA",
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
-      ]
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "usesCleartextTraffic": true,
+      "networkSecurityConfig": {
+        "domain-config": [
+          {
+            "domain": "comp90018-t8-g2.web.app",
+            "includeSubdomains": true
+          }
+        ]
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

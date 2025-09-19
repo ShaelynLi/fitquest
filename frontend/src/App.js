@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import 'react-native-gesture-handler';
-import { View } from 'react-native';
+import { View, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -16,6 +16,7 @@ import PokedexScreen from './screens/PokedexScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, globalStyles } from './theme';
+import backendApi from './services/backendApi';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -151,6 +152,36 @@ function RootNavigator() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // 测试网络连接
+    const testNetworkConnection = async () => {
+      console.log('🔍 Testing network connection on app startup...');
+      try {
+        const result = await backendApi.testConnection();
+        if (result.success) {
+          console.log('✅ Network connection successful:', result.data);
+        } else {
+          console.error('❌ Network connection failed:', result.error);
+          // 在开发模式下显示警告
+          if (__DEV__) {
+            Alert.alert(
+              'Network Connection Issue',
+              `Failed to connect to backend API: ${result.error}\n\nPlease check:\n1. Your internet connection\n2. Backend service status\n3. API URL configuration`,
+              [{ text: 'OK' }]
+            );
+          }
+        }
+      } catch (error) {
+        console.error('❌ Network test error:', error);
+      }
+    };
+
+    // 延迟3秒后测试，给应用启动时间
+    const timeoutId = setTimeout(testNetworkConnection, 3000);
+    
+    return () => clearTimeout(timeoutId);
+  }, []);
+
   return (
     <AuthProvider>
       <NavigationContainer>
