@@ -3,8 +3,11 @@ from math import radians, cos, sin, asin, sqrt
 from app.core.firebase import db
 from app.dependencies.auth import get_current_user
 from app.schemas.workout import (
-    WorkoutStartRequest, WorkoutAddPointsRequest, WorkoutFinishRequest, WorkoutSessionResponse
+    WorkoutStartRequest, WorkoutAddPointsRequest, WorkoutFinishRequest, WorkoutSessionResponse, WorkoutStatsItem
 )
+from datetime import datetime, timezone
+from collections import defaultdict
+from fastapi import Query
 
 router = APIRouter()
 
@@ -329,3 +332,60 @@ def get_workout_points(session_id: str, user=Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(500, f"Failed to get workout points: {e}")
     
+# Get workout stats: multi-week/month/year summaries
+@router.get("/stats", response_model=list[WorkoutStatsItem])
+def get_workout_stats(
+    period: str = Query("week", regex="^(week|month|year)$"),
+    user=Depends(get_current_user)
+):
+    """
+    period: "week", "month", or "year"
+    Returns a list of summaries for each week/month/year
+    """
+    try:
+        sessions = _sessions_col(user["uid"]).stream()
+        summary = defaultdict(lambda: {"total_distance_m": 0.0, "total_duration_s": 0.0, "total_calories": 0.0})
+
+        for snap in sessions:
+            data = snap.to_dict() or {}
+            if data.get("status") != "finished":
+                continue
+
+            end_time_s = data.get("end_time_s")
+            if not end_time_s:
+                continue
+
+            end_dt = datetime.fromtimestamp(end_time_s, tz=timezone.utc)
+
+            if period == "week":
+                key = f"{end_dt.isocalendar()[0]}-W{end_dt.isocalendar()[1]}"  # e.g., "2025-W38"
+            elif period == "month":
+                key = f"{end_dt.year}-{end_dt.month:02d}"  # e.g., "2025-09"
+            elif period == "year":
+                key = f"{end_dt.year}"
+
+            summary[key]["total_distance_m"] += data.get("distance_m", 0.0)
+            summary[key]["total_duration_s"] += data.get("duration_s", 0.0)
+            summary[key]["total_calories"] += data.get("calories", 0.0)
+
+        # Build response list
+        result = []
+        for key in sorted(summary.keys(), reverse=True):
+            item = summary[key]
+            avg_pace = None
+            if item["total_distance_m"] > 1:
+                avg_pace = (item["total_duration_s"] / 60.0) / (item["total_distance_m"] / 1000.0)
+            result.append({
+                "period": key,
+                "total_distance_m": item["total_distance_m"],
+                "total_duration_s": item["total_duration_s"],
+                "average_pace_min_per_km": avg_pace,
+                "total_calories": item["total_calories"]
+            })
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(500, f"Failed to get workout stats: {e}")
+
+
