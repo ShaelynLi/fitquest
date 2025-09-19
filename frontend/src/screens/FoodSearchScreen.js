@@ -7,9 +7,14 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, globalStyles } from '../theme';
+import backendApi from '../services/backendApi';
+import BarcodeScanner from '../components/BarcodeScanner';
+import { searchMockFoods, getMockCategories } from '../services/mockFoodData';
 
 /**
  * FoodSearchScreen Component - Food Database Search & Selection
@@ -21,7 +26,6 @@ import { colors, spacing, typography, globalStyles } from '../theme';
  * @param {Object} navigation - React Navigation object
  * @param {Object} route - Route params containing:
  *   - mealType: The meal category (breakfast, lunch, dinner, snacks)
- *   - onFoodSelected: Callback function to handle food selection
  *
  * Features:
  * - Real-time search with debouncing
@@ -39,187 +43,123 @@ import { colors, spacing, typography, globalStyles } from '../theme';
  * - Favorite foods
  */
 export default function FoodSearchScreen({ navigation, route }) {
-  const { mealType = 'breakfast', onFoodSelected } = route.params || {};
+  const { mealType = 'breakfast' } = route?.params || {};
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
-  // TEMPORARY: Mock food database - will be replaced with real API
-  const mockFoodDatabase = [
-    {
-      id: '1',
-      name: 'Banana',
-      brand: 'Generic',
-      category: 'fruits',
-      calories: 105,
-      protein: 1.3,
-      carbs: 27,
-      fat: 0.4,
-      fiber: 3.1,
-      sugar: 14.4,
-      servingSize: '1 medium (118g)',
-      servingUnit: 'piece',
-      verified: true,
-    },
-    {
-      id: '2',
-      name: 'Chicken Breast',
-      brand: 'Generic',
-      category: 'meat',
-      calories: 165,
-      protein: 31,
-      carbs: 0,
-      fat: 3.6,
-      fiber: 0,
-      sugar: 0,
-      servingSize: '100g',
-      servingUnit: 'grams',
-      verified: true,
-    },
-    {
-      id: '3',
-      name: 'Brown Rice',
-      brand: 'Generic',
-      category: 'grains',
-      calories: 123,
-      protein: 2.6,
-      carbs: 23,
-      fat: 0.9,
-      fiber: 1.8,
-      sugar: 0.4,
-      servingSize: '100g cooked',
-      servingUnit: 'grams',
-      verified: true,
-    },
-    {
-      id: '4',
-      name: 'Greek Yogurt',
-      brand: 'Chobani',
-      category: 'dairy',
-      calories: 100,
-      protein: 15,
-      carbs: 6,
-      fat: 0,
-      fiber: 0,
-      sugar: 4,
-      servingSize: '150g',
-      servingUnit: 'container',
-      verified: true,
-    },
-    {
-      id: '5',
-      name: 'Almonds',
-      brand: 'Generic',
-      category: 'nuts',
-      calories: 161,
-      protein: 6,
-      carbs: 6,
-      fat: 14,
-      fiber: 3.5,
-      sugar: 1.2,
-      servingSize: '28g (about 23 nuts)',
-      servingUnit: 'ounce',
-      verified: true,
-    },
-    {
-      id: '6',
-      name: 'Avocado',
-      brand: 'Generic',
-      category: 'fruits',
-      calories: 160,
-      protein: 2,
-      carbs: 8.5,
-      fat: 14.7,
-      fiber: 6.7,
-      sugar: 0.7,
-      servingSize: '1/2 medium (75g)',
-      servingUnit: 'piece',
-      verified: true,
-    },
-    {
-      id: '7',
-      name: 'Oatmeal',
-      brand: 'Quaker',
-      category: 'grains',
-      calories: 150,
-      protein: 5,
-      carbs: 27,
-      fat: 3,
-      fiber: 4,
-      sugar: 1,
-      servingSize: '40g dry',
-      servingUnit: 'grams',
-      verified: true,
-    },
-    {
-      id: '8',
-      name: 'Salmon Fillet',
-      brand: 'Generic',
-      category: 'fish',
-      calories: 206,
-      protein: 22,
-      carbs: 0,
-      fat: 12,
-      fiber: 0,
-      sugar: 0,
-      servingSize: '100g',
-      servingUnit: 'grams',
-      verified: true,
-    },
-  ];
 
-  const categories = [
-    { id: 'all', name: 'All', icon: 'grid' },
-    { id: 'fruits', name: 'Fruits', icon: 'leaf' },
-    { id: 'vegetables', name: 'Vegetables', icon: 'nutrition' },
-    { id: 'meat', name: 'Meat', icon: 'restaurant' },
-    { id: 'fish', name: 'Fish', icon: 'fish' },
-    { id: 'dairy', name: 'Dairy', icon: 'water' },
-    { id: 'grains', name: 'Grains', icon: 'library' },
-    { id: 'nuts', name: 'Nuts', icon: 'ellipse' },
-  ];
+  const categories = getMockCategories();
 
   // Search functionality with debouncing
   useEffect(() => {
     const timer = setTimeout(() => {
       performSearch();
-    }, 300);
+    }, 500); // Increased debounce time for API calls
 
     return () => clearTimeout(timer);
   }, [searchQuery, selectedCategory]);
 
-  const performSearch = () => {
+  const performSearch = async () => {
+    // Clear error state
+    setError(null);
+
+    // Don't search if query is empty or too short
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      setIsLoading(false);
+      setHasSearched(false);
+      return;
+    }
+
     setIsLoading(true);
+    setHasSearched(true);
 
-    // TEMPORARY: Mock search implementation
-    let results = mockFoodDatabase;
+    try {
+      // Search using Backend API proxy
+      console.log('Searching for:', searchQuery.trim());
+      const searchResponse = await backendApi.searchFoods(searchQuery.trim(), 0, 20);
+      let results = searchResponse.foods || [];
 
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      results = results.filter(food => food.category === selectedCategory);
+      // Filter by category if not 'all'
+      if (selectedCategory !== 'all') {
+        results = results.filter(food => food.category === selectedCategory);
+      }
+
+      console.log('Search results:', results.length, 'foods found');
+      setSearchResults(results);
+      setError(null); // Clear any previous errors
+    } catch (error) {
+      console.error('Search error:', error);
+
+      // Provide helpful error messages based on error type
+      let errorMessage = 'Failed to search foods. Please try again.';
+
+      if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+        errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+      } else if (error.message.includes('Backend API error')) {
+        errorMessage = 'Server error occurred. Please try again later.';
+      }
+
+      // Use mock data as fallback when API fails
+      console.log('Using fallback mock data due to API error');
+      const mockResults = searchMockFoods(searchQuery.trim(), selectedCategory, 0, 20);
+      setSearchResults(mockResults.foods);
+      setError(`API Error: ${errorMessage} (Using mock data fallback)`);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      results = results.filter(food =>
-        food.name.toLowerCase().includes(query) ||
-        food.brand.toLowerCase().includes(query)
+  const handleBarcodeScanned = async (barcode) => {
+    console.log('Barcode scanned:', barcode);
+    setShowBarcodeScanner(false);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await backendApi.searchFoodByBarcode(barcode);
+
+      if (result.success) {
+        // Found food, add it to search results
+        setSearchResults([result.food]);
+        setSearchQuery(`Barcode: ${barcode}`);
+        setHasSearched(true);
+        setSelectedCategory('all');
+      } else {
+        // No food found for this barcode
+        Alert.alert(
+          'Barcode Not Found',
+          result.error || 'This barcode is not in our food database. Try searching by name instead.',
+          [{ text: 'OK' }]
+        );
+        setSearchResults([]);
+        setHasSearched(true);
+      }
+    } catch (error) {
+      console.error('Barcode search error:', error);
+      Alert.alert(
+        'Search Error',
+        'Failed to search for barcode. Please try again.',
+        [{ text: 'OK' }]
       );
+      setError('Barcode search failed');
+    } finally {
+      setIsLoading(false);
     }
-
-    setSearchResults(results);
-    setIsLoading(false);
   };
 
   const handleFoodSelect = (food) => {
-    // Navigate back with selected food data
-    if (onFoodSelected) {
-      onFoodSelected(food, mealType);
-    }
-    navigation.goBack();
+    // Navigate back with selected food data as params
+    navigation.navigate('Food', {
+      selectedFood: food,
+      mealType: mealType,
+    });
   };
 
   const renderFoodItem = ({ item }) => (
@@ -301,9 +241,13 @@ export default function FoodSearchScreen({ navigation, route }) {
             onChangeText={setSearchQuery}
             placeholderTextColor={colors.textSecondary}
           />
-          {searchQuery.length > 0 && (
+          {searchQuery.length > 0 ? (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
               <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => setShowBarcodeScanner(true)}>
+              <Ionicons name="barcode" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -330,13 +274,57 @@ export default function FoodSearchScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="search" size={48} color={colors.textSecondary} />
-            <Text style={styles.emptyStateText}>
-              {searchQuery ? 'No foods found' : 'Start typing to search foods'}
-            </Text>
+            {isLoading ? (
+              <>
+                <ActivityIndicator size="large" color={colors.black} />
+                <Text style={styles.emptyStateText}>Searching foods...</Text>
+              </>
+            ) : error ? (
+              <>
+                <Ionicons name="alert-circle" size={48} color={colors.red[400]} />
+                <Text style={styles.emptyStateText}>
+                  {error}
+                </Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={performSearch}
+                >
+                  <Text style={styles.retryButtonText}>Try Again</Text>
+                </TouchableOpacity>
+              </>
+            ) : hasSearched && searchResults.length === 0 ? (
+              <>
+                <Ionicons name="search" size={48} color={colors.textSecondary} />
+                <Text style={styles.emptyStateText}>
+                  No foods found for "{searchQuery}"
+                </Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Try a different search term or check spelling
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="restaurant" size={48} color={colors.textSecondary} />
+                <Text style={styles.emptyStateText}>
+                  Search for foods to add to your {mealType}
+                </Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Type at least 2 characters to start searching
+                </Text>
+              </>
+            )}
           </View>
         }
       />
+
+      {/* Barcode Scanner Modal */}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          isVisible={showBarcodeScanner}
+          onBarcodeScanned={handleBarcodeScanned}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -511,5 +499,30 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.md,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
+  },
+  emptyStateSubtext: {
+    ...globalStyles.bodyText,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    fontSize: typography.sizes.sm,
+    opacity: 0.7,
+  },
+
+  // Error State
+  retryButton: {
+    backgroundColor: colors.black,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    marginTop: spacing.md,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    textAlign: 'center',
   },
 });
