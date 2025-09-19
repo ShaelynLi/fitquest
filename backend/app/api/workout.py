@@ -28,20 +28,23 @@ def _haversine_m(lat1, lng1, lat2, lng2):
 def start_workout(req: WorkoutStartRequest, user=Depends(get_current_user)):
     try:
         doc_ref = _sessions_col(user["uid"]).document()
+        start_time_s = req.start_time_s 
         doc_ref.set({
             "workout_type": req.workout_type,
-            "start_time_ms": req.start_time_ms,
+            "start_time_s": start_time_s,
             "status": "active",
             "distance_m": 0.0,
             "duration_s": 0.0,
             "pace_min_per_km": None,
             "points_count": 0,
+            "pause_durations": [],
+            "last_pause_start": None 
         })
         # Store GPS points in subcollection to avoid large single documents
         return WorkoutSessionResponse(
             id=doc_ref.id,
             workout_type=req.workout_type,
-            start_time_ms=req.start_time_ms,
+            start_time_s=start_time_s, 
             status="active",
             distance_m=0.0,
             duration_s=0.0,
@@ -52,7 +55,7 @@ def start_workout(req: WorkoutStartRequest, user=Depends(get_current_user)):
         raise HTTPException(500, f"Failed to start workout: {e}")
 
 # Add GPS points to an existing workout session
-@router.post("/add-points")
+@router.post("/add-points", response_model=WorkoutSessionResponse)
 def add_points(req: WorkoutAddPointsRequest, user=Depends(get_current_user)):
     if not req.points:
         return {"ok": True, "added": 0}
@@ -65,7 +68,7 @@ def add_points(req: WorkoutAddPointsRequest, user=Depends(get_current_user)):
         # Save points in subcollection
         batch_ref = session_ref.collection("points").document()
         batch_ref.set({
-            "points": [p.dict() for p in req.points]
+            "points": [{"lat": p.lat, "lng": p.lng, "t_s": p.t_ms / 1000} for p in req.points]
         })
 
         snap = session_ref.get()
@@ -81,13 +84,100 @@ def add_points(req: WorkoutAddPointsRequest, user=Depends(get_current_user)):
         count = current_count + len(req.points)
         session_ref.update({"points_count": count})
 
-        return {"ok": True, "added": len(req.points)}
+        updated = session_ref.get().to_dict() or {}
+        return WorkoutSessionResponse(
+            id=req.session_id,
+            workout_type=updated.get("workout_type", "run"),
+            start_time_s=updated.get("start_time_s"), 
+            end_time_s=updated.get("end_time_s"),  
+            status=updated.get("status", "active"),
+            distance_m=updated.get("distance_m", 0.0),
+            duration_s=updated.get("duration_s", 0.0),
+            pace_min_per_km=updated.get("pace_min_per_km"),
+            points_count=updated.get("points_count", 0),
+            calories=updated.get("calories")
+        )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(500, f"Failed to add points: {e}")
 
-# Finish a workout session: calculate total distance, duration, and pace
+# Sets the session status to "paused" and records the start time of the pause
+@router.post("/pause", response_model=WorkoutSessionResponse)
+def pause_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
+    session_ref = _session_doc(user["uid"], req.session_id)
+    snap = session_ref.get()
+    if not snap.exists:
+        raise HTTPException(404, "Session not found")
+    
+    data = snap.to_dict() or {}
+    if data.get("status") != "active":
+        raise HTTPException(400, "Workout is not active")
+    
+    # Set status to paused and record the start time of the pause
+    session_ref.update({
+        "status": "paused",
+        "last_pause_start": req.end_time_s  # Frontend provides the current pause start time
+    })
+
+    updated = session_ref.get().to_dict() or {}
+    return WorkoutSessionResponse(
+        id=session_ref.id,
+        workout_type=updated.get("workout_type", "run"),
+        start_time_s=updated.get("start_time_s"), 
+        end_time_s=updated.get("end_time_s"), 
+        status=updated.get("status", "paused"),
+        distance_m=updated.get("distance_m", 0.0),
+        duration_s=updated.get("duration_s", 0.0),
+        pace_min_per_km=updated.get("pace_min_per_km"),
+        points_count=updated.get("points_count", 0),
+        calories=updated.get("calories")
+    )
+
+# Sets the session status back to "active" and saves the pause duration
+@router.post("/resume", response_model=WorkoutSessionResponse)
+def resume_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
+    session_ref = _session_doc(user["uid"], req.session_id)
+    snap = session_ref.get()
+    if not snap.exists:
+        raise HTTPException(404, "Session not found")
+    
+    data = snap.to_dict() or {}
+    if data.get("status") != "paused":
+        raise HTTPException(400, "Workout is not paused")
+    
+    last_pause_start = data.get("last_pause_start")
+    if not last_pause_start:
+        raise HTTPException(400, "Pause start time missing")
+    
+    # Append the pause period to pause_durations
+    pause_durations = data.get("pause_durations", [])
+    pause_durations.append({
+        "start_s": last_pause_start, 
+        "end_s": req.end_time_s     # Frontend provides the current resume time
+    })
+    
+    session_ref.update({
+        "status": "active",
+        "last_pause_start": None,
+        "pause_durations": pause_durations
+    })
+    
+    updated = session_ref.get().to_dict() or {}
+    return WorkoutSessionResponse(
+        id=session_ref.id,
+        workout_type=updated.get("workout_type", "run"),
+        start_time_s=updated.get("start_time_s"),  
+        end_time_s=updated.get("end_time_s"), 
+        status=updated.get("status", "active"),
+        distance_m=updated.get("distance_m", 0.0),
+        duration_s=updated.get("duration_s", 0.0),
+        pace_min_per_km=updated.get("pace_min_per_km"),
+        points_count=updated.get("points_count", 0),
+        calories=updated.get("calories")
+    )
+
+# Finish a workout session: calculate total distance, duration (excluding pauses), pace, and calories
 @router.post("/finish", response_model=WorkoutSessionResponse)
 def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
     try:
@@ -97,9 +187,9 @@ def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
             raise HTTPException(404, "Session not found")
 
         data = snap.to_dict() or {}
-        start_ms = data.get("start_time_ms")
-        if not start_ms:
-            raise HTTPException(400, "Session start_time_ms missing")
+        start_s = data.get("start_time_s")
+        if not start_s:
+            raise HTTPException(400, "Session start_time_s missing")
 
         # Read all GPS points and calculate total distance
         points_col = session_ref.collection("points").stream()
@@ -107,7 +197,7 @@ def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
         for doc in points_col:
             chunk = doc.to_dict() or {}
             pts.extend(chunk.get("points", []))
-        pts = sorted(pts, key=lambda p: p.get("t_ms", 0))
+        pts = sorted(pts, key=lambda p: p.get("t_s", 0))
 
         # Calculate the total distance
         total_m = 0.0
@@ -115,22 +205,27 @@ def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
             a, b = pts[i-1], pts[i]
             total_m += _haversine_m(a["lat"], a["lng"], b["lat"], b["lng"])
 
-        # Total duration
-        duration_s = max(0, (req.end_time_ms - start_ms) / 1000.0)
+        # Total duration in seconds
+        duration_s = max(0, req.end_time_s - start_s)
 
+        # Subtract paused time durations
+        pause_durations = data.get("pause_durations", [])
+        for p in pause_durations:
+            start_pause = p.get("start_s", 0)
+            end_pause = p.get("end_s", 0)
+            duration_s -= (end_pause - start_pause)
+        duration_s = max(duration_s, 0)
+
+        # Calculate pace (min/km)
         pace = None
         if total_m > 1:
-            pace = (duration_s / 60.0) / (total_m / 1000.0)  # min/km
+            pace = (duration_s / 60.0) / (total_m / 1000.0)
 
         # Calculate calories
         user_doc = db.collection("users").document(user["uid"]).get()
         weight_kg = user_doc.to_dict().get("weight_kg", 70)  # Default weight: 70 kg
 
-        METS = {
-            "run": 9.8,
-            "bike": 8.0,
-            "gym": 6.0,
-        }
+        METS = {"run": 9.8, "bike": 8.0, "gym": 6.0}
         workout_type = data.get("workout_type", "run")
         met = METS.get(workout_type, 8.0)
 
@@ -138,7 +233,7 @@ def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
         calories = met * weight_kg * duration_h
 
         session_ref.update({
-            "end_time_ms": req.end_time_ms,
+            "end_time_s": req.end_time_s,
             "status": "finished",
             "distance_m": float(total_m),
             "duration_s": float(duration_s),
@@ -150,8 +245,8 @@ def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
         return WorkoutSessionResponse(
             id=req.session_id,
             workout_type=updated.get("workout_type", "run"),
-            start_time_ms=updated.get("start_time_ms"),
-            end_time_ms=updated.get("end_time_ms"),
+            start_time_s=updated.get("start_time_s"), 
+            end_time_s=updated.get("end_time_s"),  
             status=updated.get("status", "finished"),
             distance_m=updated.get("distance_m", 0.0),
             duration_s=updated.get("duration_s", 0.0),
@@ -168,15 +263,15 @@ def finish_workout(req: WorkoutFinishRequest, user=Depends(get_current_user)):
 @router.get("/", response_model=list[WorkoutSessionResponse])
 def list_workouts(user=Depends(get_current_user)):
     try:
-        q = _sessions_col(user["uid"]).order_by("start_time_ms", direction="DESCENDING").stream()
+        q = _sessions_col(user["uid"]).order_by("start_time_s", direction="DESCENDING").stream()
         res = []
         for d in q:
             v = d.to_dict() or {}
             res.append(WorkoutSessionResponse(
                 id=d.id,
                 workout_type=v.get("workout_type", "run"),
-                start_time_ms=v.get("start_time_ms"),
-                end_time_ms=v.get("end_time_ms"),
+                start_time_s=v.get("start_time_s"), 
+                end_time_s=v.get("end_time_s"),   
                 status=v.get("status", "active"),
                 distance_m=v.get("distance_m", 0.0),
                 duration_s=v.get("duration_s", 0.0),
@@ -198,8 +293,8 @@ def get_workout(session_id: str, user=Depends(get_current_user)):
         return WorkoutSessionResponse(
             id=snap.id,
             workout_type=v.get("workout_type", "run"),
-            start_time_ms=v.get("start_time_ms"),
-            end_time_ms=v.get("end_time_ms"),
+            start_time_s=v.get("start_time_s"),
+            end_time_s=v.get("end_time_s"),   
             status=v.get("status", "active"),
             distance_m=v.get("distance_m", 0.0),
             duration_s=v.get("duration_s", 0.0),
@@ -226,11 +321,11 @@ def get_workout_points(session_id: str, user=Depends(get_current_user)):
             chunk = doc.to_dict() or {}
             pts.extend(chunk.get("points", []))
 
-        pts = sorted(pts, key=lambda p: p.get("t_ms", 0))
+        pts = sorted(pts, key=lambda p: p.get("t_s", 0))
 
         return {"session_id": session_id, "points": pts}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(500, f"Failed to get workout points: {e}")
-
+    

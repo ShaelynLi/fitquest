@@ -5,12 +5,12 @@ from typing import List, Optional
 class LocationPoint(BaseModel):
     lat: float
     lng: float
-    t_ms: int  # timestamp in milliseconds
+    t_s: int  # timestamp in seconds
 
 # Start a workout
 class WorkoutStartRequest(BaseModel):
     workout_type: str = "run"
-    start_time_ms: int
+    start_time_s: int
 
 # Add multiple GPS points at once
 class WorkoutAddPointsRequest(BaseModel):
@@ -20,14 +20,14 @@ class WorkoutAddPointsRequest(BaseModel):
 # Finish a workout
 class WorkoutFinishRequest(BaseModel):
     session_id: str
-    end_time_ms: int
+    end_time_s: int
 
 # List / detail response
 class WorkoutSessionResponse(BaseModel):
     id: str
     workout_type: str
-    start_time_ms: int
-    end_time_ms: Optional[int] = None
+    start_time_s: int
+    end_time_s: Optional[int] = None
     distance_m: float = 0.0
     duration_s: float = 0.0
     pace_min_per_km: Optional[float] = None
