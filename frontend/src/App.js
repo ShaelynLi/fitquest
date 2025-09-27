@@ -12,6 +12,7 @@ import PlusScreen from './screens/PlusScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import PokedexScreen from './screens/PokedexScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
+import FoodTab from './tabs/FoodTab';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, globalStyles } from './theme';
 
@@ -130,6 +131,7 @@ function RootNavigator() {
         <>
           <Stack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
           <Stack.Screen name="Pokedex" component={PokedexScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="FoodLog" component={FoodTab} options={{ headerShown: false }} />
           <Stack.Screen name="FoodSearch" component={FoodSearchScreen} options={{ headerShown: false }} />
         </>
       ) : (
