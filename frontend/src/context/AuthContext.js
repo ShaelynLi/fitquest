@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import backendApi from '../services/backendApi';
+import { api } from '../services';
 
 const STORAGE_KEY = 'auth_token';
 
@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
         if (saved) {
           setToken(saved);
-          const me = await backendApi.me(saved);
+          const me = await api.me(saved);
           setUser(me);
         }
       } catch (e) {
@@ -36,20 +36,20 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const res = await backendApi.login(email, password);
+    const res = await api.login(email, password);
     const idToken = res.id_token;
     setToken(idToken);
     await AsyncStorage.setItem(STORAGE_KEY, idToken);
-    const me = await backendApi.me(idToken);
+    const me = await api.me(idToken);
     setUser(me);
   };
 
   const register = async (email, password, displayName) => {
-    const res = await backendApi.register(email, password, displayName);
+    const res = await api.register(email, password, displayName);
     const idToken = res.id_token;
     setToken(idToken);
     await AsyncStorage.setItem(STORAGE_KEY, idToken);
-    const me = await backendApi.me(idToken);
+    const me = await api.me(idToken);
     setUser(me);
   };
 

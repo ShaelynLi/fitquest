@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, globalStyles } from '../theme';
-import backendApi from '../services/backendApi';
-import BarcodeScanner from '../components/BarcodeScanner';
-import { searchMockFoods, getMockCategories } from '../services/mockFoodData';
+import { api } from '../services';
+import { BarcodeScanner } from '../components';
+import { searchMockFoods, getMockCategories } from '../utils/mockData';
 
 /**
  * FoodSearchScreen Component - Food Database Search & Selection
@@ -83,7 +83,7 @@ export default function FoodSearchScreen({ navigation, route }) {
     try {
       // Search using Backend API proxy
       console.log('Searching for:', searchQuery.trim());
-      const searchResponse = await backendApi.searchFoods(searchQuery.trim(), 0, 20);
+      const searchResponse = await api.searchFoods(searchQuery.trim(), 0, 20);
       let results = searchResponse.foods || [];
 
       // Filter by category if not 'all'
@@ -123,7 +123,7 @@ export default function FoodSearchScreen({ navigation, route }) {
     setError(null);
 
     try {
-      const result = await backendApi.searchFoodByBarcode(barcode);
+      const result = await api.searchFoodByBarcode(barcode);
 
       if (result.success) {
         // Found food, add it to search results

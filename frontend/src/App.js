@@ -8,17 +8,17 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
-import RunScreen from './screens/RunScreen';
 import PlusScreen from './screens/PlusScreen';
-import FoodScreen from './screens/FoodScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import PokedexScreen from './screens/PokedexScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, globalStyles } from './theme';
+import { colors, typography, globalStyles } from './theme';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+// Development-only: bypass authentication and jump straight to the app
+const BYPASS_AUTH = true;
 
 function Tabs() {
   return (
@@ -29,17 +29,30 @@ function Tabs() {
           position: 'absolute',
           bottom: 34,
           marginHorizontal: 16,
-          backgroundColor: colors.black,
+          backgroundColor: colors.surface,
           borderRadius: 25,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
-          borderWidth: 1,
-          borderColor: colors.black,
+          height: 70,
+          paddingBottom: 12,
+          paddingTop: 12,
+          // Aura Health design system - subtle shadow
+          shadowColor: colors.black,
+          shadowOffset: {
+            width: 0,
+            height: 4,
+          },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 4,
         },
-        tabBarActiveTintColor: colors.white,
-        tabBarInactiveTintColor: colors.gray[400],
-        tabBarShowLabel: false,
+        tabBarActiveTintColor: colors.textPrimary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontFamily: typography.body,
+          fontWeight: typography.weights.medium,
+          marginTop: 4,
+        },
       }}
     >
       <Tab.Screen
@@ -50,21 +63,7 @@ function Tabs() {
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
-              size={size}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Run"
-        component={RunScreen}
-        options={{
-          tabBarLabel: 'Run',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'walk' : 'walk-outline'}
-              size={size}
+              size={22}
               color={color}
             />
           ),
@@ -74,40 +73,33 @@ function Tabs() {
         name="Plus"
         component={PlusScreen}
         options={{
-          tabBarLabel: '',
+          tabBarLabel: 'Quick Actions',
           tabBarIcon: ({ focused, color, size }) => (
             <View
               style={{
-                backgroundColor: focused ? colors.white : colors.gray[600],
-                borderWidth: 1,
-                borderColor: focused ? colors.white : colors.gray[500],
-                borderRadius: 25,
-                width: 40,
-                height: 40,
+                backgroundColor: focused ? colors.textPrimary : colors.gray[300],
+                borderRadius: 20,
+                width: 36,
+                height: 36,
                 justifyContent: 'center',
                 alignItems: 'center',
+                // Subtle shadow for the plus button
+                shadowColor: colors.black,
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2,
               }}
             >
               <Ionicons
                 name="add"
-                size={20}
-                color={focused ? colors.black : colors.white}
+                size={18}
+                color={focused ? colors.white : colors.textPrimary}
               />
             </View>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Food"
-        component={FoodScreen}
-        options={{
-          tabBarLabel: 'Food',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'restaurant' : 'restaurant-outline'}
-              size={size}
-              color={color}
-            />
           ),
         }}
       />
@@ -119,7 +111,7 @@ function Tabs() {
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}
-              size={size}
+              size={22}
               color={color}
             />
           ),
@@ -131,10 +123,10 @@ function Tabs() {
 
 function RootNavigator() {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (!BYPASS_AUTH && loading) return null;
   return (
     <Stack.Navigator>
-      {user ? (
+      {BYPASS_AUTH || user ? (
         <>
           <Stack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
           <Stack.Screen name="Pokedex" component={PokedexScreen} options={{ headerShown: false }} />
