@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.settings import settings
 from app.api.auth import router as auth_router
 from app.api.workout import router as workout_router
-from app.api.meals import router as meals_router
 from app.api.users import router as users_router
 from app.api.foods import router as foods_router
 import os
@@ -56,7 +55,6 @@ def api_root():
 # API Routes
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(workout_router, prefix="/workouts", tags=["workouts"])
-app.include_router(meals_router)
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(foods_router)
 

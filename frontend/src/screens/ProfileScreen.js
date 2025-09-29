@@ -82,22 +82,22 @@ export default function ProfileScreen() {
 
   const StatCard = ({ icon, value, label, unit = '' }) => (
     <View style={styles.statCard}>
-      <Ionicons name={icon} size={24} color={colors.black} />
-      <Text style={styles.statValue}>{value}{unit}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Ionicons name={icon} size={24} color={colors.textPrimary} />
+      <Text style={globalStyles.mediumNumber}>{value}{unit}</Text>
+      <Text style={globalStyles.secondaryText}>{label}</Text>
     </View>
   );
 
 
   return (
-    <View style={styles.container}>
+    <View style={globalStyles.screenContainer}>
       {/* Header with Settings Button */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Profile</Text>
+          <Text style={globalStyles.pageTitle}>Profile</Text>
         </View>
         <TouchableOpacity
-          style={styles.settingsButton}
+          style={globalStyles.buttonPrimary}
           onPress={() => setSettingsModalVisible(true)}
         >
           <Ionicons name="settings-outline" size={24} color={colors.white} />
@@ -106,37 +106,37 @@ export default function ProfileScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* User Information */}
-        <View style={styles.userSection}>
+        <View style={globalStyles.cardLarge}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <Ionicons name="person" size={40} color={colors.textSecondary} />
             </View>
           </View>
-          <Text style={styles.userName}>{user?.email?.split('@')[0] || 'FitQuest User'}</Text>
-          <Text style={styles.joinDate}>Member since {userStats.joinDate}</Text>
+          <Text style={globalStyles.sectionHeader}>{user?.email?.split('@')[0] || 'FitQuest User'}</Text>
+          <Text style={globalStyles.secondaryText}>Member since {userStats.joinDate}</Text>
 
           {/* Quick Stats */}
           <View style={styles.quickStats}>
             <View style={styles.quickStat}>
-              <Text style={styles.quickStatValue}>{userStats.currentStreak}</Text>
-              <Text style={styles.quickStatLabel}>Day Streak</Text>
+              <Text style={globalStyles.mediumNumber}>{userStats.currentStreak}</Text>
+              <Text style={globalStyles.secondaryText}>Day Streak</Text>
             </View>
             <View style={styles.quickStat}>
-              <Text style={styles.quickStatValue}>{userStats.totalRuns}</Text>
-              <Text style={styles.quickStatLabel}>Total Runs</Text>
+              <Text style={globalStyles.mediumNumber}>{userStats.totalRuns}</Text>
+              <Text style={globalStyles.secondaryText}>Total Runs</Text>
             </View>
             <View style={styles.quickStat}>
-              <Text style={styles.quickStatValue}>{userStats.totalDistance}km</Text>
-              <Text style={styles.quickStatLabel}>Distance</Text>
+              <Text style={globalStyles.mediumNumber}>{userStats.totalDistance}km</Text>
+              <Text style={globalStyles.secondaryText}>Distance</Text>
             </View>
           </View>
         </View>
 
 
         {/* Activity Heatmap */}
-        <View style={styles.activitySection}>
-          <Text style={styles.sectionTitle}>Activity Overview</Text>
-          <Text style={styles.activitySubtitle}>Your workout activity over the past year</Text>
+        <View style={[globalStyles.card, { backgroundColor: colors.aurora.teal + '15' }]}>
+          <Text style={globalStyles.sectionHeader}>Activity Overview</Text>
+          <Text style={globalStyles.secondaryText}>Your workout activity over the past year</Text>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.heatmapScroll}>
             <View style={styles.heatmap}>
@@ -172,8 +172,8 @@ export default function ProfileScreen() {
         </View>
 
         {/* Detailed Stats */}
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Lifetime Stats</Text>
+        <View style={[globalStyles.card, { backgroundColor: colors.aurora.green + '15' }]}>
+          <Text style={globalStyles.sectionHeader}>Lifetime Stats</Text>
           <View style={styles.statsGrid}>
             <StatCard
               icon="walk"
@@ -288,12 +288,6 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: 60,
-    paddingBottom: 100,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -306,35 +300,8 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontFamily: typography.heading,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-  },
-  settingsButton: {
-    backgroundColor: colors.black,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.black,
-    padding: spacing.sm,
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   scrollView: {
     flex: 1,
-  },
-  userSection: {
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    padding: spacing.lg,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.black,
-    alignItems: 'center',
   },
   avatarContainer: {
     marginBottom: spacing.md,
@@ -343,24 +310,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    borderWidth: 1,
-    borderColor: colors.black,
     backgroundColor: colors.gray[100],
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  userName: {
-    fontSize: typography.sizes.xl,
-    fontFamily: typography.heading,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  joinDate: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   quickStats: {
     flexDirection: 'row',

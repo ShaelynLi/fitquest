@@ -15,10 +15,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, globalStyles } from '../theme';
 
 /**
- * FoodScreen Component - Food Diary & Nutrition Tracking
+ * FoodTab Component - Food Diary & Nutrition Tracking
  *
  * Complete food logging and nutrition tracking interface.
- * Features a modern design with pie chart calories display and horizontal macro bars.
+ * Updated with Aura Health design system - card-based layout with sophisticated styling.
  *
  * Key Features:
  * - Circular pie chart showing daily calorie progress
@@ -27,37 +27,11 @@ import { colors, spacing, typography, globalStyles } from '../theme';
  * - Modal interface for adding foods with nutrition data
  * - Daily nutrition goals and progress tracking
  *
- * Design Implementation:
- * - Left: Pie chart visualization for calories
- * - Right: Stacked horizontal bars for macros
- * - Color-coded progress indicators
- * - Clean card-based layout
- *
- * TODO Future Enhancements:
- * - Food database integration for auto-complete
- * - Barcode scanning for packaged foods
- * - Meal photo capture
- * - Nutrition insights and recommendations
- * - Weekly/monthly nutrition analytics
+ * Part of the nested tab navigation within HomeScreen.
  */
-export default function FoodScreen({ navigation, route }) {
+export default function FoodTab({ navigation, route }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Generate array of dates for calendar slider (7 days before and after today)
-  const generateDateRange = () => {
-    const dates = [];
-    const today = new Date();
-
-    for (let i = -7; i <= 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      dates.push(date);
-    }
-
-    return dates;
-  };
-
-  const dateRange = generateDateRange();
   const [meals, setMeals] = useState({
     breakfast: [],
     lunch: [],
@@ -108,39 +82,10 @@ export default function FoodScreen({ navigation, route }) {
       if (route.params?.selectedFood && route.params?.mealType) {
         const { selectedFood, mealType } = route.params;
         handleFoodSelected(selectedFood, mealType);
-
-        // Clear the params to prevent duplicate additions
         navigation.setParams({ selectedFood: undefined, mealType: undefined });
       }
     }, [route.params?.selectedFood, route.params?.mealType])
   );
-
-  // Date formatting and utilities
-  const formatDateSlider = (date) => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return { label: 'Today', day: date.getDate(), weekday: 'Today' };
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return { label: 'Tomorrow', day: date.getDate(), weekday: 'Tom' };
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return { label: 'Yesterday', day: date.getDate(), weekday: 'Yest' };
-    } else {
-      return {
-        label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        day: date.getDate(),
-        weekday: date.toLocaleDateString('en-US', { weekday: 'short' })
-      };
-    }
-  };
-
-  const isSameDate = (date1, date2) => {
-    return date1.toDateString() === date2.toDateString();
-  };
 
   // Handle food selection from search screen
   const handleFoodSelected = (foodData, mealType) => {
@@ -168,7 +113,7 @@ export default function FoodScreen({ navigation, route }) {
     });
   };
 
-  // LEGACY: Old add meal function (keeping for manual entry fallback)
+  // Manual entry function
   const addMeal = () => {
     if (!foodName.trim() || !calories) {
       Alert.alert('Error', 'Please enter food name and calories');
@@ -199,52 +144,36 @@ export default function FoodScreen({ navigation, route }) {
   };
 
   /**
-   * CaloriePieChart Component
-   *
-   * Custom circular progress indicator for calorie tracking.
-   * Shows current calories consumed vs daily goal in a visual pie chart format.
-   *
-   * Implementation uses React Native border styling to create circular progress.
-   * Alternative: Could use SVG or react-native-svg for more advanced charting.
-   *
-   * @param {number} current - Current calories consumed
-   * @param {number} goal - Daily calorie goal
+   * CaloriePieChart Component - Updated with Aura Health styling
    */
   const CaloriePieChart = ({ current, goal }) => {
     const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
-    const radius = 60;
-    const strokeWidth = 12;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (circumference * percentage) / 100;
+    const isOverGoal = current > goal;
 
     return (
       <View style={styles.pieChartContainer}>
         <View style={styles.pieChart}>
           {/* Background circle */}
-          <View style={[styles.pieBackground, { width: (radius * 2) + strokeWidth, height: (radius * 2) + strokeWidth }]}>
+          <View style={styles.pieBackground}>
             {/* Progress indicator using border */}
             <View style={[
               styles.pieProgress,
               {
-                width: radius * 2,
-                height: radius * 2,
-                borderRadius: radius,
-                borderWidth: strokeWidth,
                 borderColor: colors.gray[200],
-                borderTopColor: current <= goal ? colors.blue[400] : colors.error,
+                borderTopColor: isOverGoal ? colors.aurora.pink : colors.aurora.blue,
                 transform: [{ rotate: `${(percentage * 3.6) - 90}deg` }]
               }
             ]} />
           </View>
           {/* Center content */}
           <View style={styles.pieCenter}>
-            <Text style={styles.pieCaloriesText}>
+            <Text style={globalStyles.mediumNumber}>
               {Math.round(current)}
             </Text>
-            <Text style={styles.pieCaloriesUnit}>kcal</Text>
+            <Text style={globalStyles.captionText}>kcal</Text>
           </View>
         </View>
-        <Text style={styles.pieGoalText}>
+        <Text style={globalStyles.captionText}>
           Goal: {goal} kcal
         </Text>
       </View>
@@ -252,21 +181,7 @@ export default function FoodScreen({ navigation, route }) {
   };
 
   /**
-   * MacroBar Component
-   *
-   * Horizontal progress bar for displaying macronutrient progress.
-   * Shows label, current/goal values, and visual progress indicator.
-   *
-   * Design matches the reference image with:
-   * - Color dot indicator
-   * - Label and values on same line
-   * - Horizontal progress bar below
-   *
-   * @param {string} label - Nutrient name (Fat, Protein, Carbs)
-   * @param {number} current - Current amount consumed
-   * @param {number} goal - Daily goal amount
-   * @param {string} color - Progress bar color
-   * @param {string} unit - Unit of measurement (default: 'g')
+   * MacroBar Component - Updated with Aura Health styling
    */
   const MacroBar = ({ label, current, goal, color, unit = 'g' }) => {
     const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
@@ -275,9 +190,9 @@ export default function FoodScreen({ navigation, route }) {
         <View style={styles.macroHeader}>
           <View style={styles.macroLabelContainer}>
             <View style={[styles.macroColorDot, { backgroundColor: color }]} />
-            <Text style={styles.macroLabel}>{label}</Text>
+            <Text style={globalStyles.bodyText}>{label}</Text>
           </View>
-          <Text style={styles.macroValue}>
+          <Text style={globalStyles.secondaryText}>
             {Math.round(current)}{unit}/{Math.round(goal)}{unit}
           </Text>
         </View>
@@ -293,19 +208,19 @@ export default function FoodScreen({ navigation, route }) {
     );
   };
 
-  // Meal section component
+  // Meal section component - Updated with Aura Health styling
   const MealSection = ({ mealType, foods, icon }) => {
     const mealCalories = foods.reduce((sum, food) => sum + food.calories, 0);
 
     return (
-      <View style={styles.mealSection}>
+      <View style={globalStyles.card}>
         <View style={styles.mealHeader}>
           <View style={styles.mealTitleContainer}>
             <Ionicons name={icon} size={20} color={colors.textPrimary} />
-            <Text style={styles.mealTitle}>
+            <Text style={globalStyles.sectionSubheader}>
               {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
             </Text>
-            <Text style={styles.mealCalories}>{mealCalories} cal</Text>
+            <Text style={globalStyles.secondaryText}>{mealCalories} cal</Text>
           </View>
           <TouchableOpacity
             style={styles.addButton}
@@ -318,14 +233,14 @@ export default function FoodScreen({ navigation, route }) {
         {foods.map((food) => (
           <View key={food.id} style={styles.foodItem}>
             <View style={styles.foodItemInfo}>
-              <Text style={styles.foodName}>
+              <Text style={globalStyles.bodyText}>
                 {food.brand ? `${food.name} (${food.brand})` : food.name}
               </Text>
               {food.servingSize && (
-                <Text style={styles.foodServing}>{food.servingSize}</Text>
+                <Text style={globalStyles.captionText}>{food.servingSize}</Text>
               )}
             </View>
-            <Text style={styles.foodCalories}>{food.calories} cal</Text>
+            <Text style={globalStyles.secondaryText}>{food.calories} cal</Text>
           </View>
         ))}
 
@@ -336,37 +251,12 @@ export default function FoodScreen({ navigation, route }) {
     );
   };
 
-  // Date slider component
-  const renderDateItem = ({ item }) => {
-    const dateInfo = formatDateSlider(item);
-    const isSelected = isSameDate(item, selectedDate);
-
-    return (
-      <TouchableOpacity
-        style={[styles.dateItem, isSelected && styles.dateItemSelected]}
-        onPress={() => setSelectedDate(item)}
-      >
-        <Text style={[styles.dateWeekday, isSelected && styles.dateTextSelected]}>
-          {dateInfo.weekday}
-        </Text>
-        <Text style={[styles.dateDay, isSelected && styles.dateTextSelected]}>
-          {dateInfo.day}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Food Diary</Text>
-      </View>
-
+    <View style={globalStyles.screenContainer}>
       <ScrollView style={styles.scrollView}>
-        {/* Nutrition Overview */}
-        <View style={styles.nutritionOverview}>
-          <Text style={styles.sectionTitle}>Daily Nutrition</Text>
+        {/* Daily Nutrition Overview - Updated with Aura Health styling */}
+        <View style={globalStyles.cardLarge}>
+          <Text style={globalStyles.sectionHeader}>Daily Nutrition</Text>
           <View style={styles.nutritionContent}>
             {/* Left: Pie Chart */}
             <CaloriePieChart
@@ -380,19 +270,19 @@ export default function FoodScreen({ navigation, route }) {
                 label="Fat"
                 current={dailyTotals.fat}
                 goal={dailyGoals.fat}
-                color={colors.yellow[400]}
+                color={colors.aurora.orange}
               />
               <MacroBar
                 label="Protein"
                 current={dailyTotals.protein}
                 goal={dailyGoals.protein}
-                color={colors.green[400]}
+                color={colors.aurora.green}
               />
               <MacroBar
                 label="Carbs"
                 current={dailyTotals.carbs}
                 goal={dailyGoals.carbs}
-                color={colors.purple[400]}
+                color={colors.aurora.violet}
               />
             </View>
           </View>
@@ -427,75 +317,75 @@ export default function FoodScreen({ navigation, route }) {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={styles.modalContainer}>
+        <View style={globalStyles.screenContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity
               onPress={() => setAddMealModalVisible(false)}
             >
-              <Text style={styles.cancelButton}>Cancel</Text>
+              <Text style={globalStyles.buttonTextSecondary}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Food</Text>
+            <Text style={globalStyles.sectionSubheader}>Add Food</Text>
             <TouchableOpacity onPress={addMeal}>
-              <Text style={styles.saveButton}>Save</Text>
+              <Text style={globalStyles.buttonTextPrimary}>Save</Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalContent}>
+          <ScrollView style={globalStyles.contentContainer}>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Food Name</Text>
+              <Text style={globalStyles.bodyText}>Food Name</Text>
               <TextInput
                 style={styles.textInput}
                 value={foodName}
                 onChangeText={setFoodName}
                 placeholder="Enter food name"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Calories</Text>
+              <Text style={globalStyles.bodyText}>Calories</Text>
               <TextInput
                 style={styles.textInput}
                 value={calories}
                 onChangeText={setCalories}
                 placeholder="0"
                 keyboardType="numeric"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
 
             <View style={styles.macroInputs}>
               <View style={styles.macroInput}>
-                <Text style={styles.inputLabel}>Protein (g)</Text>
+                <Text style={globalStyles.bodyText}>Protein (g)</Text>
                 <TextInput
                   style={styles.textInput}
                   value={protein}
                   onChangeText={setProtein}
                   placeholder="0"
                   keyboardType="numeric"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={colors.textTertiary}
                 />
               </View>
               <View style={styles.macroInput}>
-                <Text style={styles.inputLabel}>Carbs (g)</Text>
+                <Text style={globalStyles.bodyText}>Carbs (g)</Text>
                 <TextInput
                   style={styles.textInput}
                   value={carbs}
                   onChangeText={setCarbs}
                   placeholder="0"
                   keyboardType="numeric"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={colors.textTertiary}
                 />
               </View>
               <View style={styles.macroInput}>
-                <Text style={styles.inputLabel}>Fat (g)</Text>
+                <Text style={globalStyles.bodyText}>Fat (g)</Text>
                 <TextInput
                   style={styles.textInput}
                   value={fat}
                   onChangeText={setFat}
                   placeholder="0"
                   keyboardType="numeric"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={colors.textTertiary}
                 />
               </View>
             </View>
@@ -507,50 +397,18 @@ export default function FoodScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: 60,
-    paddingBottom: 100,
-  },
-  header: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.background,
-    marginBottom: spacing.md,
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontFamily: typography.heading,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
   scrollView: {
     flex: 1,
   },
-  nutritionOverview: {
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    padding: spacing.lg,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.black,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.xl,
-    fontFamily: typography.heading,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
+
+  // Nutrition Overview
   nutritionContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  // Pie Chart Styles
+
+  // Pie Chart Styles - Updated
   pieChartContainer: {
     alignItems: 'center',
     flex: 1,
@@ -565,34 +423,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.gray[100],
-    borderRadius: 100,
+    borderRadius: 60,
+    width: 120,
+    height: 120,
   },
   pieProgress: {
     position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 12,
   },
   pieCenter: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pieCaloriesText: {
-    fontSize: typography.sizes.xxl,
-    fontFamily: typography.heading,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-  },
-  pieCaloriesUnit: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.body,
-    color: colors.textSecondary,
-  },
-  pieGoalText: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  // Macro Bars Styles
+
+  // Macro Bars Styles - Updated
   macrosContainer: {
     flexDirection: 'column',
     flex: 1,
@@ -617,41 +465,19 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginRight: spacing.xs,
   },
-  macroLabel: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.medium,
-    color: colors.textPrimary,
-  },
   macroProgressContainer: {
-    height: 8,
+    height: 6,
     width: '100%',
     backgroundColor: colors.gray[200],
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.black,
+    borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: spacing.xs,
   },
   macroProgress: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 3,
   },
-  macroValue: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.body,
-    color: colors.textSecondary,
-    textAlign: 'right',
-  },
-  mealSection: {
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    padding: spacing.lg,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.black,
-  },
+
+  // Meal Section Styles - Updated
   mealHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -663,24 +489,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  mealTitle: {
-    fontSize: typography.sizes.lg,
-    fontFamily: typography.heading,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-    marginLeft: spacing.sm,
-  },
-  mealCalories: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.body,
-    color: colors.textSecondary,
-    marginLeft: spacing.sm,
-  },
   addButton: {
-    backgroundColor: colors.black,
+    backgroundColor: colors.textPrimary,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.black,
     padding: spacing.sm,
     width: 40,
     height: 40,
@@ -695,41 +506,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     backgroundColor: colors.gray[50],
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.black,
     marginBottom: spacing.sm,
   },
   foodItemInfo: {
     flex: 1,
   },
-  foodName: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.medium,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  foodServing: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.body,
-    color: colors.textSecondary,
-  },
-  foodCalories: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.body,
-    color: colors.textSecondary,
-  },
   emptyMeal: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    color: colors.textSecondary,
+    ...globalStyles.secondaryText,
     textAlign: 'center',
     paddingVertical: spacing.lg,
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+
+  // Modal Styles - Updated
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -739,49 +527,21 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
-  },
-  cancelButton: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.medium,
-    color: colors.textSecondary,
-  },
-  modalTitle: {
-    fontSize: typography.sizes.xl,
-    fontFamily: typography.heading,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-  },
-  saveButton: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.semibold,
-    color: colors.black,
-  },
-  modalContent: {
-    flex: 1,
-    padding: spacing.md,
+    borderBottomColor: colors.border,
   },
   inputGroup: {
     marginBottom: spacing.lg,
   },
-  inputLabel: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.medium,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
   textInput: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.black,
+    borderColor: colors.border,
     borderRadius: 12,
     padding: spacing.md,
     fontSize: typography.sizes.md,
     fontFamily: typography.body,
     color: colors.textPrimary,
+    marginTop: spacing.sm,
   },
   macroInputs: {
     flexDirection: 'row',
