@@ -6,9 +6,10 @@
  */
 
 // Backend API Configuration
+// 在移动设备上测试时，即使在开发模式也使用生产API
 const BACKEND_BASE_URL = __DEV__
-  ? 'http://localhost:8000'  // Development: FastAPI default port
-  : 'https://your-production-backend.com';  // Production: Replace with your deployed backend URL
+  ? 'https://comp90018-t8-g2.web.app'  // Development: Use production API for mobile testing
+  : 'https://comp90018-t8-g2.web.app';  // Production: Firebase Hosting with reverse proxy
 
 class BackendApiService {
   constructor() {
@@ -236,6 +237,94 @@ class BackendApiService {
       verified: food.verified,
       fatSecretId: food.fatsecret_id,
     };
+  }
+
+  // ============ WORKOUT API METHODS ============
+
+  /**
+   * Start a new workout session
+   * @param {string} workoutType - Type of workout (e.g., 'run')
+   * @param {number} startTimeMs - Start timestamp in milliseconds
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Workout session response
+   */
+  async startWorkout(workoutType = 'run', startTimeMs = Date.now(), token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return await this.makeRequest('/api/workouts/start', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        workout_type: workoutType,
+        start_time_ms: startTimeMs,
+      }),
+    });
+  }
+
+  /**
+   * Add GPS points to an active workout session
+   * @param {string} sessionId - Workout session ID
+   * @param {Array} points - Array of GPS points with lat, lng, t_ms
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Response with added points count
+   */
+  async addWorkoutPoints(sessionId, points, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return await this.makeRequest('/api/workouts/add-points', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        session_id: sessionId,
+        points: points,
+      }),
+    });
+  }
+
+  /**
+   * Finish a workout session
+   * @param {string} sessionId - Workout session ID
+   * @param {number} endTimeMs - End timestamp in milliseconds
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Final workout session data
+   */
+  async finishWorkout(sessionId, endTimeMs = Date.now(), token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return await this.makeRequest('/api/workouts/finish', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        session_id: sessionId,
+        end_time_ms: endTimeMs,
+      }),
+    });
+  }
+
+  /**
+   * Get all workout sessions for the current user
+   * @returns {Promise<Array>} List of workout sessions
+   */
+  async getWorkouts() {
+    return await this.makeRequest('/api/workouts/');
+  }
+
+  /**
+   * Get a specific workout session by ID
+   * @param {string} sessionId - Workout session ID
+   * @returns {Promise<Object>} Workout session details
+   */
+  async getWorkout(sessionId) {
+    return await this.makeRequest(`/api/workouts/${sessionId}`);
   }
 }
 
