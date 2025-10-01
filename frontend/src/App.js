@@ -161,7 +161,7 @@ function RootNavigator() {
 
 export default function App() {
   useEffect(() => {
-    // 测试网络连接
+    // Test network connection
     const testNetworkConnection = async () => {
       console.log('🔍 Testing network connection on app startup...');
       try {
@@ -169,7 +169,7 @@ export default function App() {
         console.log('✅ Network connection successful:', result);
       } catch (error) {
         console.error('❌ Network connection failed:', error.message);
-        // 在开发模式下显示警告
+        // Show warning in development mode
         if (__DEV__) {
           Alert.alert(
             'Network Connection Issue',
@@ -180,7 +180,7 @@ export default function App() {
       }
     };
 
-    // 延迟3秒后测试，给应用启动时间
+    // Test after 3 second delay to give app startup time
     const timeoutId = setTimeout(testNetworkConnection, 3000);
     
     return () => clearTimeout(timeoutId);

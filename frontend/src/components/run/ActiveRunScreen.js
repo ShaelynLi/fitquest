@@ -51,6 +51,7 @@ export default function ActiveRunScreen() {
   const [mapError, setMapError] = useState(false);
   const [initialMapRegion, setInitialMapRegion] = useState(null);
   const [userInteractedWithMap, setUserInteractedWithMap] = useState(false);
+  const [autoFitEnabled, setAutoFitEnabled] = useState(false);
   const mapRef = useRef(null);
 
   // Keep screen awake during run
@@ -64,14 +65,14 @@ export default function ActiveRunScreen() {
     return () => deactivateKeepAwake();
   }, [status]);
 
-  // Update map region when location changes
+  // Update map region when location changes (fixed zoom level)
   useEffect(() => {
     if (currentLocation && !userInteractedWithMap) {
       const newRegion = {
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
-        latitudeDelta: 0.005, // Zoom level for running
-        longitudeDelta: 0.005,
+        latitudeDelta: 0.01, // Fixed zoom level - consistent blue dot size
+        longitudeDelta: 0.01,
       };
       setMapRegion(newRegion);
       
@@ -81,6 +82,51 @@ export default function ActiveRunScreen() {
       }
     }
   }, [currentLocation, userInteractedWithMap, initialMapRegion]);
+
+  // Initialize map region immediately when component mounts
+  useEffect(() => {
+    if (currentLocation && !mapRegion) {
+      const initialRegion = {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: 0.01, // Initial wider view
+        longitudeDelta: 0.01,
+      };
+      setMapRegion(initialRegion);
+    }
+  }, [currentLocation, mapRegion]);
+
+  // Auto-fit map to route when route points are available (user controlled)
+  useEffect(() => {
+    if (autoFitEnabled && routePoints.length > 1 && mapRef.current && !userInteractedWithMap) {
+      // Calculate bounds for all route points
+      const coordinates = routePoints.map(point => ({
+        latitude: point.latitude,
+        longitude: point.longitude,
+      }));
+      
+      // Fit map to show all route points
+      mapRef.current.fitToCoordinates(coordinates, {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      });
+    }
+  }, [routePoints, userInteractedWithMap, autoFitEnabled]);
+
+  // Auto-fit map to current location when starting (before route points)
+  useEffect(() => {
+    if (currentLocation && routePoints.length === 0 && mapRef.current && !userInteractedWithMap) {
+      // Set initial map region with better zoom level for starting
+      const initialRegion = {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: 0.01, // Slightly wider view for starting
+        longitudeDelta: 0.01,
+      };
+      
+      mapRef.current.animateToRegion(initialRegion, 1000);
+    }
+  }, [currentLocation, routePoints.length, userInteractedWithMap]);
 
   // Format time as MM:SS or HH:MM:SS
   const formatTime = (seconds) => {
@@ -150,6 +196,21 @@ export default function ActiveRunScreen() {
       setUserInteractedWithMap(false);
       mapRef.current.animateToRegion(initialMapRegion, 1000);
       setMapRegion(initialMapRegion);
+    }
+  };
+
+  const toggleAutoFit = () => {
+    setAutoFitEnabled(!autoFitEnabled);
+    if (!autoFitEnabled && routePoints.length > 1) {
+      // Immediately fit to route if enabling
+      const coordinates = routePoints.map(point => ({
+        latitude: point.latitude,
+        longitude: point.longitude,
+      }));
+      mapRef.current?.fitToCoordinates(coordinates, {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      });
     }
   };
 
@@ -275,6 +336,17 @@ export default function ActiveRunScreen() {
                   <Ionicons name="remove" size={20} color={colors.textPrimary} />
                 </TouchableOpacity>
                 
+                <TouchableOpacity
+                  style={[styles.mapControlButton, autoFitEnabled && styles.activeControlButton]}
+                  onPress={toggleAutoFit}
+                >
+                  <Ionicons 
+                    name={autoFitEnabled ? "contract" : "expand"} 
+                    size={20} 
+                    color={autoFitEnabled ? colors.white : colors.textPrimary} 
+                  />
+                </TouchableOpacity>
+                
                 {userInteractedWithMap && (
                   <TouchableOpacity
                     style={[styles.mapControlButton, styles.resetButton]}
@@ -309,9 +381,6 @@ export default function ActiveRunScreen() {
                 </Text>
                 <Text style={styles.routeInfo}>
                   📡 GPS Status: {getGPSStatus()}
-                </Text>
-                <Text style={styles.buildInfo}>
-                  💡 For full map view, use Development Build
                 </Text>
               </View>
 
@@ -514,7 +583,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: spacing.xl, // 确保底部有足够的空间
+    paddingBottom: spacing.xl, // Ensure enough space at bottom
   },
   container: {
     flex: 1,
@@ -522,7 +591,7 @@ const styles = StyleSheet.create({
 
   // Map
   mapContainer: {
-    height: 250, // 固定高度，更适合滚动视图
+    height: 250, // Fixed height, better for scroll view
     position: 'relative',
   },
   map: {
@@ -839,5 +908,8 @@ const styles = StyleSheet.create({
   resetButton: {
     backgroundColor: colors.aurora.blue + '15',
     borderColor: colors.aurora.blue,
+  },
+  activeControlButton: {
+    backgroundColor: colors.aurora.blue,
   },
 });
