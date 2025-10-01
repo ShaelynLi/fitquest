@@ -8,7 +8,6 @@ const AuthContext = createContext({
   user: null,
   token: null,
   loading: true,
-  isOnboarded: false,
   login: async (email, password) => {},
   register: async (email, password, displayName) => {},
   completeOnboarding: async (userData) => {},
@@ -19,26 +18,11 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isOnboarded, setIsOnboarded] = useState(false);
+  // We no longer gate UI on onboarding; successful auth shows main UI
 
   useEffect(() => {
-    (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          setToken(saved);
-          const me = await api.me(saved);
-          setUser(me);
-          // Check if user has completed onboarding
-          const isOnboarded = me?.isOnboarded || false;
-          setIsOnboarded(isOnboarded);
-        }
-      } catch (e) {
-        // ignore initial load errors
-      } finally {
-        setLoading(false);
-      }
-    })();
+    // No auto-login on startup - always start from WelcomeScreen
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
@@ -60,32 +44,26 @@ export function AuthProvider({ children }) {
   };
 
   const completeOnboarding = async (userData) => {
-    // Complete onboarding with backend
+    // Complete onboarding/registration then authenticate
     const res = await api.completeOnboarding(userData);
-    
-    if (res.success) {
-      // Get authentication token by logging in
-      const loginRes = await api.login(userData.email, userData.password);
-      const idToken = loginRes.id_token;
-      setToken(idToken);
-      await AsyncStorage.setItem(STORAGE_KEY, idToken);
-      
-      const me = await api.me(idToken);
-      setUser(me);
-      setIsOnboarded(true);
-    } else {
+    if (!res.success) {
       throw new Error(res.message || 'Onboarding failed');
     }
+    const loginRes = await api.login(userData.email, userData.password);
+    const idToken = loginRes.id_token;
+    setToken(idToken);
+    await AsyncStorage.setItem(STORAGE_KEY, idToken);
+    const me = await api.me(idToken);
+    setUser(me);
   };
 
   const logout = async () => {
     setUser(null);
     setToken(null);
-    setIsOnboarded(false);
     await AsyncStorage.removeItem(STORAGE_KEY);
   };
 
-  const value = useMemo(() => ({ user, token, loading, isOnboarded, login, register, completeOnboarding, logout }), [user, token, loading, isOnboarded]);
+  const value = useMemo(() => ({ user, token, loading, login, register, completeOnboarding, logout }), [user, token, loading]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

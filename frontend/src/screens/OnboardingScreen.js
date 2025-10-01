@@ -147,6 +147,8 @@ export default function OnboardingScreen({ navigation }) {
       };
 
       await completeOnboarding(onboardingData);
+      // After successful onboarding and auth, go to main app
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to complete onboarding');
     } finally {

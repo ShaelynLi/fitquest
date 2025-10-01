@@ -36,23 +36,23 @@ const getBackendUrl = () => {
       // Extract IP from debuggerHost (works for Expo Go on physical devices)
       const ip = debuggerHost.split(':')[0];
       console.log('Detected backend IP from debuggerHost:', ip);
-      return `http://${ip}:8001`;
+      return `http://${ip}:8000`;
     }
 
     // Additional check: if we have a hostUri, extract IP from it
     if (Constants.hostUri) {
       const ip = Constants.hostUri.split(':')[0];
       console.log('Detected backend IP from hostUri:', ip);
-      return `http://${ip}:8001`;
+      return `http://${ip}:8000`;
     }
 
     // Fallback based on platform for simulator vs device
     if (Platform.OS === 'ios') {
       console.log('Using localhost for iOS simulator');
-      return 'http://localhost:8001';  // iOS Simulator
+      return 'http://localhost:8000';  // iOS Simulator
     } else {
       console.log('Using Android emulator localhost');
-      return 'http://10.0.2.2:8001';  // Android Emulator
+      return 'http://10.0.2.2:8000';  // Android Emulator
     }
   }
   // Production: use deployed backend

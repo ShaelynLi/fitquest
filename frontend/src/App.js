@@ -133,29 +133,20 @@ function Tabs() {
 }
 
 function RootNavigator() {
-  const { user, loading, isOnboarded } = useAuth();
+  const { loading } = useAuth();
   
   if (loading) return null;
   
   return (
-    <Stack.Navigator>
-      {user && isOnboarded ? (
-        <>
-          <Stack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
-          <Stack.Screen name="Pokedex" component={PokedexScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="FoodLog" component={FoodTab} options={{ headerShown: false }} />
-          <Stack.Screen name="FoodSearch" component={FoodSearchScreen} options={{ headerShown: false }} />
-        </>
-      ) : user && !isOnboarded ? (
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
-      ) : (
-        <>
-          <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
-        </>
-      )}
+    <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="Main" component={Tabs} />
+      <Stack.Screen name="Pokedex" component={PokedexScreen} />
+      <Stack.Screen name="FoodLog" component={FoodTab} />
+      <Stack.Screen name="FoodSearch" component={FoodSearchScreen} />
     </Stack.Navigator>
   );
 }
