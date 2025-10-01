@@ -14,14 +14,16 @@ import { colors, spacing, typography, globalStyles } from '../theme';
  * - Elegant typography using dual-font system
  * - Quick access to primary app functions
  */
-export default function PlusScreen() {
+export default function PlusScreen({ navigation }) {
   // Action handlers - will be connected to navigation
   const handleStartRun = () => {
     console.log('TODO: Navigate to Run tab in Home screen');
   };
 
   const handleLogMeal = () => {
-    console.log('TODO: Navigate to Food tab in Home screen');
+    navigation.navigate('FoodSearch', {
+      mealType: 'breakfast' // Default meal type, can be made dynamic later
+    });
   };
 
   const handleViewCollection = () => {

@@ -15,22 +15,41 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, globalStyles } from '../theme';
 
 /**
- * FoodTab Component - Food Diary & Nutrition Tracking
+ * FoodTab Component - Enhanced Food Log Screen
  *
- * Complete food logging and nutrition tracking interface.
- * Updated with Aura Health design system - card-based layout with sophisticated styling.
+ * Complete food logging and nutrition tracking interface following the FitQuest design.
+ * Refined with Aura Health design system - card-based layout with sophisticated styling.
  *
  * Key Features:
- * - Circular pie chart showing daily calorie progress
- * - Horizontal progress bars for macronutrients (Fat, Protein, Carbs)
- * - Meal logging by category (Breakfast, Lunch, Dinner, Snacks)
- * - Modal interface for adding foods with nutrition data
+ * - Date selector with horizontal scrolling calendar
+ * - Large calorie progress bar with Aurora gradient
+ * - Detailed macronutrient breakdown
+ * - Meal logging cards (Breakfast, Lunch, Dinner, Snacks)
+ * - Enhanced food search integration
  * - Daily nutrition goals and progress tracking
  *
- * Part of the nested tab navigation within HomeScreen.
+ * Updated UI Structure:
+ * A. Header with elegant title and navigation
+ * B. Date selector (7-day horizontal scroll)
+ * C. Daily nutrition summary card with large progress bar
+ * D. Meal logging cards with improved layout
  */
 export default function FoodTab({ navigation, route }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  // Generate dates for the calendar slider (7 days: 3 previous, today, 3 future)
+  const generateCalendarDates = () => {
+    const dates = [];
+    const today = new Date();
+    for (let i = -3; i <= 3; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  };
+  
+  const calendarDates = generateCalendarDates();
 
   const [meals, setMeals] = useState({
     breakfast: [],
@@ -144,38 +163,86 @@ export default function FoodTab({ navigation, route }) {
   };
 
   /**
-   * CaloriePieChart Component - Updated with Aura Health styling
+   * DateSelector Component - Horizontal scrolling calendar
    */
-  const CaloriePieChart = ({ current, goal }) => {
-    const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
-    const isOverGoal = current > goal;
+  const DateSelector = () => {
+    const formatDate = (date) => {
+      const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      return {
+        day: days[date.getDay()],
+        number: date.getDate(),
+        isToday: date.toDateString() === new Date().toDateString(),
+        isSelected: date.toDateString() === selectedDate.toDateString()
+      };
+    };
 
     return (
-      <View style={styles.pieChartContainer}>
-        <View style={styles.pieChart}>
-          {/* Background circle */}
-          <View style={styles.pieBackground}>
-            {/* Progress indicator using border */}
-            <View style={[
-              styles.pieProgress,
-              {
-                borderColor: colors.gray[200],
-                borderTopColor: isOverGoal ? colors.aurora.pink : colors.aurora.blue,
-                transform: [{ rotate: `${(percentage * 3.6) - 90}deg` }]
-              }
-            ]} />
-          </View>
-          {/* Center content */}
-          <View style={styles.pieCenter}>
-            <Text style={globalStyles.mediumNumber}>
-              {Math.round(current)}
-            </Text>
-            <Text style={globalStyles.captionText}>kcal</Text>
-          </View>
+      <View style={styles.dateSelector}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dateScrollContent}
+        >
+          {calendarDates.map((date, index) => {
+            const dateInfo = formatDate(date);
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.dateItem,
+                  (dateInfo.isSelected || dateInfo.isToday) && styles.dateItemActive
+                ]}
+                onPress={() => setSelectedDate(date)}
+              >
+                <Text style={[
+                  styles.dateDayText,
+                  (dateInfo.isSelected || dateInfo.isToday) && styles.dateActiveText
+                ]}>
+                  {dateInfo.day}
+                </Text>
+                <Text style={[
+                  styles.dateNumberText,
+                  (dateInfo.isSelected || dateInfo.isToday) && styles.dateActiveText
+                ]}>
+                  {dateInfo.number}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  /**
+   * CalorieProgressBar Component - Large horizontal progress bar with Aurora gradient
+   */
+  const CalorieProgressBar = ({ current, goal }) => {
+    const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+    const isOverGoal = current > goal;
+    const remainingCalories = Math.max(goal - current, 0);
+
+    return (
+      <View style={styles.calorieProgressContainer}>
+        <View style={styles.calorieHeader}>
+          <Text style={globalStyles.sectionSubheader}>
+            {Math.round(current)} of {goal} kcal
+          </Text>
+          <Text style={globalStyles.secondaryText}>
+            {remainingCalories > 0 ? `${remainingCalories} remaining` : 'Goal reached!'}
+          </Text>
         </View>
-        <Text style={globalStyles.captionText}>
-          Goal: {goal} kcal
-        </Text>
+        <View style={styles.progressBarContainer}>
+          <View
+            style={[
+              styles.progressBarFill,
+              { 
+                width: `${percentage}%`,
+                backgroundColor: isOverGoal ? colors.red[400] : colors.aurora.blue
+              }
+            ]}
+          />
+        </View>
       </View>
     );
   };
@@ -208,87 +275,107 @@ export default function FoodTab({ navigation, route }) {
     );
   };
 
-  // Meal section component - Updated with Aura Health styling
+  // D. Meal Section Component - Enhanced layout with prominent Add Food button
   const MealSection = ({ mealType, foods, icon }) => {
     const mealCalories = foods.reduce((sum, food) => sum + food.calories, 0);
 
     return (
       <View style={globalStyles.card}>
+        {/* Enhanced Meal Header */}
         <View style={styles.mealHeader}>
           <View style={styles.mealTitleContainer}>
-            <Ionicons name={icon} size={20} color={colors.textPrimary} />
-            <Text style={globalStyles.sectionSubheader}>
+            <Ionicons name={icon} size={24} color={colors.textPrimary} />
+            <Text style={styles.mealTitle}>
               {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
             </Text>
-            <Text style={globalStyles.secondaryText}>{mealCalories} cal</Text>
           </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => openFoodSearch(mealType)}
-          >
-            <Ionicons name="add" size={20} color={colors.white} />
-          </TouchableOpacity>
+          <Text style={styles.mealCalories}>{mealCalories} kcal</Text>
         </View>
 
-        {foods.map((food) => (
-          <View key={food.id} style={styles.foodItem}>
-            <View style={styles.foodItemInfo}>
-              <Text style={globalStyles.bodyText}>
-                {food.brand ? `${food.name} (${food.brand})` : food.name}
-              </Text>
-              {food.servingSize && (
-                <Text style={globalStyles.captionText}>{food.servingSize}</Text>
-              )}
-            </View>
-            <Text style={globalStyles.secondaryText}>{food.calories} cal</Text>
+        {/* Food Items List */}
+        {foods.length > 0 ? (
+          <View style={styles.foodList}>
+            {foods.map((food) => (
+              <View key={food.id} style={styles.foodItem}>
+                <View style={styles.foodItemInfo}>
+                  <Text style={globalStyles.bodyText}>
+                    {food.brand ? `${food.name} (${food.brand})` : food.name}
+                  </Text>
+                  {food.servingSize && (
+                    <Text style={globalStyles.captionText}>{food.servingSize}</Text>
+                  )}
+                </View>
+                <Text style={globalStyles.secondaryText}>{food.calories} cal</Text>
+              </View>
+            ))}
           </View>
-        ))}
-
-        {foods.length === 0 && (
-          <Text style={styles.emptyMeal}>No foods added yet</Text>
+        ) : (
+          <View style={styles.emptyMealContainer}>
+            <Text style={styles.emptyMeal}>No {mealType} logged yet.</Text>
+          </View>
         )}
+
+        {/* Prominent Add Food Button */}
+        <TouchableOpacity
+          style={styles.addFoodButton}
+          onPress={() => openFoodSearch(mealType)}
+        >
+          <Ionicons name="add" size={20} color={colors.textPrimary} />
+          <Text style={styles.addFoodButtonText}>Add Food</Text>
+        </TouchableOpacity>
       </View>
     );
   };
 
   return (
-    <View style={globalStyles.screenContainer}>
-      <ScrollView style={styles.scrollView}>
-        {/* Daily Nutrition Overview - Updated with Aura Health styling */}
-        <View style={globalStyles.cardLarge}>
-          <Text style={globalStyles.sectionHeader}>Daily Nutrition</Text>
-          <View style={styles.nutritionContent}>
-            {/* Left: Pie Chart */}
-            <CaloriePieChart
-              current={dailyTotals.calories}
-              goal={dailyGoals.calories}
-            />
+    <SafeAreaView style={styles.container}>
+      {/* A. Date Selector */}
+      <DateSelector />
 
-            {/* Right: Macro Bars */}
-            <View style={styles.macrosContainer}>
-              <MacroBar
-                label="Fat"
-                current={dailyTotals.fat}
-                goal={dailyGoals.fat}
-                color={colors.aurora.orange}
-              />
-              <MacroBar
-                label="Protein"
-                current={dailyTotals.protein}
-                goal={dailyGoals.protein}
-                color={colors.aurora.green}
-              />
-              <MacroBar
-                label="Carbs"
-                current={dailyTotals.carbs}
-                goal={dailyGoals.carbs}
-                color={colors.aurora.violet}
-              />
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* B. Daily Nutrition Summary Card */}
+        <View style={globalStyles.cardLarge}>
+          <Text style={globalStyles.sectionHeader}>
+            {selectedDate.toDateString() === new Date().toDateString() 
+              ? "Today's Nutrition" 
+              : "Daily Nutrition"}
+          </Text>
+          
+          {/* Large Calorie Progress Bar */}
+          <CalorieProgressBar
+            current={dailyTotals.calories}
+            goal={dailyGoals.calories}
+          />
+
+          {/* Macronutrient Breakdown */}
+          <View style={styles.macroBreakdown}>
+            <Text style={[globalStyles.secondaryText, { marginBottom: spacing.sm }]}>
+              Macronutrient Breakdown
+            </Text>
+            <View style={styles.macroRow}>
+              <View style={styles.macroItem}>
+                <Text style={globalStyles.bodyText}>Protein</Text>
+                <Text style={globalStyles.secondaryText}>
+                  {Math.round(dailyTotals.protein)} / {dailyGoals.protein}g
+                </Text>
+              </View>
+              <View style={styles.macroItem}>
+                <Text style={globalStyles.bodyText}>Carbs</Text>
+                <Text style={globalStyles.secondaryText}>
+                  {Math.round(dailyTotals.carbs)} / {dailyGoals.carbs}g
+                </Text>
+              </View>
+              <View style={styles.macroItem}>
+                <Text style={globalStyles.bodyText}>Fat</Text>
+                <Text style={globalStyles.secondaryText}>
+                  {Math.round(dailyTotals.fat)} / {dailyGoals.fat}g
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* Meals */}
+        {/* C. Meal Logging Cards */}
         <MealSection
           mealType="breakfast"
           foods={meals.breakfast}
@@ -392,111 +479,127 @@ export default function FoodTab({ navigation, route }) {
           </ScrollView>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  // Base Layout
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   scrollView: {
     flex: 1,
   },
 
-  // Nutrition Overview
-  nutritionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  // A. Date Selector Styles
+  dateSelector: {
+    backgroundColor: colors.background,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-
-  // Pie Chart Styles - Updated
-  pieChartContainer: {
-    alignItems: 'center',
-    flex: 1,
+  dateScrollContent: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
   },
-  pieChart: {
-    position: 'relative',
+  dateItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minWidth: 60,
   },
-  pieBackground: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.gray[100],
-    borderRadius: 60,
-    width: 120,
-    height: 120,
+  dateItemActive: {
+    backgroundColor: colors.textPrimary,
   },
-  pieProgress: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 12,
-  },
-  pieCenter: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Macro Bars Styles - Updated
-  macrosContainer: {
-    flexDirection: 'column',
-    flex: 1,
-    paddingLeft: spacing.lg,
-  },
-  macroBar: {
-    marginBottom: spacing.md,
-  },
-  macroHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  dateDayText: {
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
-  macroLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  dateNumberText: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
   },
-  macroColorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: spacing.xs,
-  },
-  macroProgressContainer: {
-    height: 6,
-    width: '100%',
-    backgroundColor: colors.gray[200],
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  macroProgress: {
-    height: '100%',
-    borderRadius: 3,
+  dateActiveText: {
+    color: colors.white,
   },
 
-  // Meal Section Styles - Updated
+  // B. Calorie Progress Bar Styles
+  calorieProgressContainer: {
+    marginVertical: spacing.lg,
+  },
+  calorieHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  progressBarContainer: {
+    height: 12,
+    backgroundColor: colors.gray[200],
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+
+  // Macronutrient Breakdown
+  macroBreakdown: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  macroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  macroItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  // C. Meal Section Styles - Enhanced
   mealHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   mealTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    gap: spacing.sm,
   },
-  addButton: {
-    backgroundColor: colors.textPrimary,
-    borderRadius: 20,
-    padding: spacing.sm,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  mealTitle: {
+    fontSize: typography.sizes.lg,
+    fontFamily: typography.heading,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  mealCalories: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+  },
+  
+  // Food List Styles
+  foodList: {
+    marginBottom: spacing.md,
   },
   foodItem: {
     flexDirection: 'row',
@@ -511,10 +614,39 @@ const styles = StyleSheet.create({
   foodItemInfo: {
     flex: 1,
   },
-  emptyMeal: {
-    ...globalStyles.secondaryText,
-    textAlign: 'center',
+  
+  // Empty State
+  emptyMealContainer: {
     paddingVertical: spacing.lg,
+    alignItems: 'center',
+  },
+  emptyMeal: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  
+  // Prominent Add Food Button
+  addFoodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.textPrimary,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    gap: spacing.sm,
+  },
+  addFoodButtonText: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.medium,
+    color: colors.textPrimary,
   },
 
   // Modal Styles - Updated

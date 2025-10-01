@@ -6,6 +6,8 @@ import {
   Alert,
   TouchableOpacity,
   Dimensions,
+  Modal,
+  StatusBar,
 } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,22 +43,25 @@ export default function BarcodeScanner({ onBarcodeScanned, onClose, isVisible })
     setScanned(true);
     console.log('Barcode scanned:', { type, data });
 
-    // Validate barcode format (should be 8-13 digits)
-    const cleanBarcode = data.replace(/\D/g, ''); // Remove non-digits
-    if (cleanBarcode.length >= 8 && cleanBarcode.length <= 13) {
-      onBarcodeScanned(cleanBarcode);
-    } else {
-      Alert.alert(
-        'Invalid Barcode',
-        'Please scan a valid product barcode (UPC or EAN format)',
-        [
-          {
-            text: 'Try Again',
-            onPress: () => setScanned(false),
-          },
-        ]
-      );
-    }
+    // Add a small delay to prevent duplicate events
+    setTimeout(() => {
+      // Validate barcode format (should be 8-13 digits)
+      const cleanBarcode = data.replace(/\D/g, ''); // Remove non-digits
+      if (cleanBarcode.length >= 8 && cleanBarcode.length <= 13) {
+        onBarcodeScanned(cleanBarcode);
+      } else {
+        Alert.alert(
+          'Invalid Barcode',
+          'Please scan a valid product barcode (UPC or EAN format)',
+          [
+            {
+              text: 'Try Again',
+              onPress: () => setScanned(false),
+            },
+          ]
+        );
+      }
+    }, 100);
   };
 
   const resetScanner = () => {
@@ -93,7 +98,14 @@ export default function BarcodeScanner({ onBarcodeScanned, onClose, isVisible })
   }
 
   return (
-    <View style={styles.container}>
+    <Modal
+      visible={isVisible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      statusBarTranslucent={true}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeIcon} onPress={onClose}>
@@ -145,6 +157,7 @@ export default function BarcodeScanner({ onBarcodeScanned, onClose, isVisible })
         </View>
       </View>
     </View>
+    </Modal>
   );
 }
 
@@ -152,6 +165,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.black,
+    paddingTop: StatusBar.currentHeight || 0, // Handle Android status bar
   },
 
   // Header
@@ -160,9 +174,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md, // Reduced since we handle status bar in container
     paddingBottom: spacing.md,
     backgroundColor: colors.black,
+    zIndex: 10, // Ensure header stays on top
   },
   closeIcon: {
     width: 44,
@@ -186,9 +201,13 @@ const styles = StyleSheet.create({
   cameraContainer: {
     flex: 1,
     position: 'relative',
+    width: '100%',
+    height: '100%',
   },
   camera: {
     flex: 1,
+    width: '100%',
+    height: '100%',
   },
 
   // Overlay

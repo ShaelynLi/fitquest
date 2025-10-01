@@ -126,11 +126,18 @@ class FatSecretService:
         Returns:
             Dictionary containing food_id if found, None if not found
         """
-        if not barcode or len(barcode.strip()) < 8:
-            return {"food_id": None, "error": "Invalid barcode format"}
+        # Reduced logging to prevent duplicates
 
-        # Use the barcode endpoint
-        barcode_url = "https://platform.fatsecret.com/rest/food/barcode/find-by-id/v1"
+        if not barcode or len(barcode.strip()) < 8:
+            return {
+                "food_id": None, 
+                "error": "Invalid barcode format",
+                "success": False,
+                "barcode": barcode
+            }
+
+        # Use the correct FatSecret API endpoint with method parameter
+        barcode_url = "https://platform.fatsecret.com/rest/server.api"
         await self._ensure_valid_token()
 
         headers = {
@@ -139,6 +146,7 @@ class FatSecretService:
         }
 
         params = {
+            "method": "food.find_id_for_barcode",
             "barcode": barcode.strip(),
             "format": "json",
         }
@@ -149,38 +157,101 @@ class FatSecretService:
                 response.raise_for_status()
                 json_response = response.json()
 
+                # Debug: Log successful response
+
                 # Check for FatSecret API errors
                 if "error" in json_response:
-                    error_code = json_response["error"].get("code")
-                    error_message = json_response["error"].get("message", "Unknown error")
-                    return {"food_id": None, "error": f"FatSecret API Error {error_code}: {error_message}"}
+                    error_data = json_response["error"]
+                    error_code = error_data.get("code", "unknown") if isinstance(error_data, dict) else "unknown"
+                    error_message = error_data.get("message", "Unknown error") if isinstance(error_data, dict) else str(error_data)
+                    print(f"FatSecret API Error: {error_code} - {error_message}")
 
-                # Extract food_id from response
-                food_id_data = json_response.get("food_id", {})
-                if isinstance(food_id_data, dict):
-                    food_id = food_id_data.get("value")
-                else:
-                    food_id = food_id_data
+                    # Handle specific error codes that indicate "not found"
+                    if error_code in ["2", "3", "4"]:  # Common FatSecret "not found" error codes
+                        return {
+                            "food_id": None, 
+                            "error": "This barcode is not in our food database",
+                            "success": False,
+                            "barcode": barcode
+                        }
+                    else:
+                        return {
+                            "food_id": None, 
+                            "error": f"Food database error: {error_message}",
+                            "success": False,
+                            "barcode": barcode
+                        }
+
+                # Extract food_id from response - FatSecret might return different formats
+                food_id = None
+                if "food_id" in json_response:
+                    food_id_data = json_response["food_id"]
+                    if isinstance(food_id_data, dict):
+                        food_id = food_id_data.get("value")
+                    else:
+                        food_id = food_id_data
+                elif "food" in json_response:
+                    # Sometimes the response might contain food data directly
+                    food_data = json_response["food"]
+                    if isinstance(food_data, dict):
+                        food_id = food_data.get("food_id")
+
+                # Extracted food_id for processing
 
                 if food_id:
                     # Get detailed food information using the food_id
                     food_details = await self.get_food_details(str(food_id))
-                    return {"food_id": food_id, "food": food_details}
+                    return {
+                        "food_id": food_id, 
+                        "food": food_details,
+                        "success": True,
+                        "barcode": barcode
+                    }
                 else:
-                    return {"food_id": None, "error": "No food found for this barcode"}
+                    # No error but no food_id means the barcode wasn't found
+                    return {
+                        "food_id": None, 
+                        "error": "This barcode is not in our food database",
+                        "success": False,
+                        "barcode": barcode
+                    }
 
             except httpx.HTTPStatusError as e:
+                print(f"HTTP Status Error: {e.response.status_code}")
                 if e.response.status_code == 404:
-                    return {"food_id": None, "error": "Barcode not found in database"}
+                    return {
+                        "food_id": None, 
+                        "error": "This barcode is not in our food database",
+                        "success": False,
+                        "barcode": barcode
+                    }
+                elif e.response.status_code == 400:
+                    return {
+                        "food_id": None, 
+                        "error": "Invalid barcode format",
+                        "success": False,
+                        "barcode": barcode
+                    }
                 else:
-                    return {"food_id": None, "error": f"HTTP Error {e.response.status_code}"}
+                    return {
+                        "food_id": None, 
+                        "error": "Food database temporarily unavailable",
+                        "success": False,
+                        "barcode": barcode
+                    }
             except Exception as e:
-                return {"food_id": None, "error": f"Request failed: {str(e)}"}
+                print(f"Exception in barcode search: {type(e).__name__}: {str(e)}")
+                return {
+                    "food_id": None, 
+                    "error": "Food database temporarily unavailable",
+                    "success": False,
+                    "barcode": barcode
+                }
 
     async def get_food_details(self, food_id: str) -> Dict[str, Any]:
         """Get detailed information for a specific food"""
-        # Use different endpoint for food details
-        detail_url = "https://platform.fatsecret.com/rest/food/v4"
+        # Use the method-based endpoint for food details
+        detail_url = "https://platform.fatsecret.com/rest/server.api"
         await self._ensure_valid_token()
 
         headers = {
@@ -189,6 +260,7 @@ class FatSecretService:
         }
 
         params = {
+            "method": "food.get",
             "food_id": food_id,
             "format": "json",
         }
@@ -208,7 +280,13 @@ class FatSecretService:
 
     def _transform_search_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Transform FatSecret search response to our app format"""
+        if not response:
+            return {"foods": [], "total_results": 0, "page_number": 0}
+            
         foods_search = response.get("foods_search", {})
+        if not foods_search:
+            return {"foods": [], "total_results": 0, "page_number": 0}
+            
         results = foods_search.get("results", {})
         food_list = results.get("food", [])
 
@@ -325,73 +403,6 @@ class FatSecretService:
         food = response.get("food", {})
         return self._transform_food_item(food)
 
-    async def search_food_by_barcode(self, barcode: str) -> Dict[str, Any]:
-        """
-        Search for a food by barcode using FatSecret API
-        
-        Args:
-            barcode: 13-digit GTIN-13 barcode (UPC-A, EAN-13, EAN-8 supported)
-            
-        Returns:
-            Dictionary containing food information or error message
-        """
-        try:
-            # Validate barcode format
-            if not barcode or len(barcode) < 8 or len(barcode) > 13:
-                return {
-                    "success": False,
-                    "error": "Invalid barcode format. Please provide a valid UPC-A, EAN-13, or EAN-8 barcode."
-                }
-            
-            # FatSecret doesn't have direct barcode search, so we'll search by barcode as text
-            # This is a limitation - FatSecret API doesn't support barcode lookup directly
-            params = {
-                "method": "foods.search",
-                "search_expression": barcode,
-                "page_number": 0,
-                "max_results": 5,
-                "format": "json",
-            }
-            
-            response = await self._make_request(params)
-            search_results = self._transform_search_response(response)
-            
-            # Look for exact barcode match in food names or descriptions
-            foods = search_results.get("foods", [])
-            matching_food = None
-            
-            for food in foods:
-                food_name = food.get("name", "").lower()
-                food_brand = food.get("brand", "").lower()
-                barcode_lower = barcode.lower()
-                
-                # Check if barcode appears in food name or brand
-                if (barcode_lower in food_name or 
-                    barcode_lower in food_brand or
-                    barcode in food.get("fatsecret_id", "")):
-                    matching_food = food
-                    break
-            
-            if matching_food:
-                return {
-                    "success": True,
-                    "food_id": matching_food.get("id"),
-                    "food": matching_food,
-                    "barcode": barcode
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": f"No food found for barcode {barcode}. This barcode is not in our database.",
-                    "barcode": barcode
-                }
-                
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Barcode search failed: {str(e)}",
-                "barcode": barcode
-            }
 
 
 # Singleton instance

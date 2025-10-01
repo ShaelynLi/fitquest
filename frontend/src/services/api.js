@@ -5,11 +5,61 @@
  * This approach solves IP whitelisting issues and provides better security.
  */
 
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
 // Backend API Configuration
-// 在移动设备上测试时，即使在开发模式也使用生产API
-const BACKEND_BASE_URL = __DEV__
-  ? 'https://comp90018-t8-g2.web.app'  // Development: Use production API for mobile testing
-  : 'https://comp90018-t8-g2.web.app';  // Production: Firebase Hosting with reverse proxy
+// For development: use local backend with FatSecret credentials
+// For production: use deployed backend
+const getBackendUrl = () => {
+  if (__DEV__) {
+    // Development: use local backend
+    console.log('=== Backend Detection ===');
+    console.log('debuggerHost:', Constants.debuggerHost);
+    console.log('hostUri:', Constants.hostUri);
+    console.log('Platform.OS:', Platform.OS);
+    console.log('=========================');
+
+    // Try to detect if running in Expo Go (physical device) vs simulator
+    let debuggerHost = null;
+    
+    // Try multiple methods to detect the development server IP
+    if (Constants.manifest2?.extra?.expoGo?.debuggerHost) {
+      debuggerHost = Constants.manifest2.extra.expoGo.debuggerHost;
+    } else if (Constants.expoConfig?.debuggerHost) {
+      debuggerHost = Constants.expoConfig.debuggerHost;
+    } else if (Constants.debuggerHost) {
+      debuggerHost = Constants.debuggerHost;
+    }
+
+    if (debuggerHost) {
+      // Extract IP from debuggerHost (works for Expo Go on physical devices)
+      const ip = debuggerHost.split(':')[0];
+      console.log('Detected backend IP from debuggerHost:', ip);
+      return `http://${ip}:8000`;
+    }
+
+    // Additional check: if we have a hostUri, extract IP from it
+    if (Constants.hostUri) {
+      const ip = Constants.hostUri.split(':')[0];
+      console.log('Detected backend IP from hostUri:', ip);
+      return `http://${ip}:8000`;
+    }
+
+    // Fallback based on platform for simulator vs device
+    if (Platform.OS === 'ios') {
+      console.log('Using localhost for iOS simulator');
+      return 'http://localhost:8000';  // iOS Simulator
+    } else {
+      console.log('Using Android emulator localhost');
+      return 'http://10.0.2.2:8000';  // Android Emulator
+    }
+  }
+  // Production: use deployed backend
+  return 'https://comp90018-t8-g2.web.app';
+};
+
+const BACKEND_BASE_URL = getBackendUrl();
 
 class BackendApiService {
   constructor() {
@@ -29,7 +79,6 @@ class BackendApiService {
         'Accept': 'application/json',
         ...options.headers,
       },
-      // 增加超时和重试配置
       timeout: 15000,
     };
 
@@ -39,15 +88,15 @@ class BackendApiService {
       console.log('Backend API request:', url);
       console.log('Request options:', JSON.stringify(requestOptions, null, 2));
 
-      // 创建带超时的fetch请求
+      // Create fetch with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
-      
+
       const response = await fetch(url, {
         ...requestOptions,
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
 
       console.log('Response status:', response.status);
@@ -71,14 +120,13 @@ class BackendApiService {
         stack: error.stack,
         url: url,
       });
-      
-      // 提供更详细的错误信息
+
       if (error.name === 'AbortError') {
         throw new Error('Request timeout - please check your internet connection');
-      } else if (error.message.includes('Network request failed')) {
+      } else if (error.message && error.message.includes('Network request failed')) {
         throw new Error('Network connection failed - please check your internet connection and try again');
       }
-      
+
       throw error;
     }
   }
@@ -124,21 +172,6 @@ class BackendApiService {
     } else {
       throw new Error('Food search failed');
     }
-  }
-
-  /**
-   * Search for food by barcode
-   *
-   * @param {string} barcode - Barcode to search for
-   * @returns {Promise<Object>} Search result with food information
-   */
-  async searchFoodByBarcode(barcode) {
-    if (!barcode || barcode.trim().length < 8) {
-      throw new Error('Invalid barcode format');
-    }
-
-    const response = await this.makeRequest(`/api/foods/barcode/${barcode.trim()}`);
-    return response;
   }
 
   /**
@@ -235,19 +268,40 @@ class BackendApiService {
       throw new Error('Invalid barcode format');
     }
 
-    const response = await this.makeRequest(`/api/foods/barcode/${barcode.trim()}`);
+    try {
+      const response = await this.makeRequest(`/api/foods/barcode/${barcode.trim()}`);
 
-    if (response.success) {
-      return {
-        success: true,
-        food: this.transformFoodItem(response.food),
-        barcode: response.barcode
-      };
-    } else {
+      // Handle successful response with food data
+      if (response && response.success && response.food) {
+        return {
+          success: true,
+          food: this.transformFoodItem(response.food),
+          barcode: response.barcode || barcode
+        };
+      }
+      // Handle failed response (food not found)
+      else if (response && response.success === false) {
+        return {
+          success: false,
+          error: response.error || 'Food not found for this barcode',
+          barcode: response.barcode || barcode
+        };
+      }
+      // Handle unexpected response format
+      else {
+        return {
+          success: false,
+          error: 'Unexpected response format from server',
+          barcode: barcode
+        };
+      }
+    } catch (error) {
+      // Handle network or other errors
+      console.error('Barcode search API error:', error);
       return {
         success: false,
-        error: response.error,
-        barcode: response.barcode
+        error: 'Network error occurred while searching for barcode',
+        barcode: barcode
       };
     }
   }
@@ -267,21 +321,25 @@ class BackendApiService {
    * Transform food item to match frontend format
    */
   transformFoodItem(food) {
+    if (!food) {
+      throw new Error('Food data is required');
+    }
+
     return {
-      id: food.id,
-      name: food.name,
-      brand: food.brand,
-      category: food.category,
-      calories: food.calories,
-      protein: food.protein,
-      carbs: food.carbs,
-      fat: food.fat,
-      fiber: food.fiber,
-      sugar: food.sugar,
-      servingSize: food.serving_size,
-      servingUnit: food.serving_unit,
-      verified: food.verified,
-      fatSecretId: food.fatsecret_id,
+      id: food.id || 'unknown',
+      name: food.name || 'Unknown Food',
+      brand: food.brand || 'Unknown Brand',
+      category: food.category || 'general',
+      calories: Number(food.calories) || 0,
+      protein: Number(food.protein) || 0,
+      carbs: Number(food.carbs) || 0,
+      fat: Number(food.fat) || 0,
+      fiber: Number(food.fiber) || 0,
+      sugar: Number(food.sugar) || 0,
+      servingSize: food.serving_size || '1 serving',
+      servingUnit: food.serving_unit || 'serving',
+      verified: Boolean(food.verified),
+      fatSecretId: food.fatsecret_id || null,
     };
   }
 
@@ -299,7 +357,7 @@ class BackendApiService {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return await this.makeRequest('/api/workouts/start', {
       method: 'POST',
       headers,
@@ -322,7 +380,7 @@ class BackendApiService {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return await this.makeRequest('/api/workouts/add-points', {
       method: 'POST',
       headers,
@@ -345,7 +403,7 @@ class BackendApiService {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return await this.makeRequest('/api/workouts/finish', {
       method: 'POST',
       headers,

@@ -8,15 +8,15 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
-import RunScreen from './screens/RunScreen';
+import RunTab from './tabs/RunTab';
 import PlusScreen from './screens/PlusScreen';
-import FoodScreen from './screens/FoodScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import PokedexScreen from './screens/PokedexScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
+import FoodTab from './tabs/FoodTab';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, globalStyles } from './theme';
-import backendApi from './services/backendApi';
+import { api } from './services';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -59,7 +59,7 @@ function Tabs() {
       />
       <Tab.Screen
         name="Run"
-        component={RunScreen}
+        component={RunTab}
         options={{
           tabBarLabel: 'Run',
           tabBarIcon: ({ focused, color, size }) => (
@@ -100,7 +100,7 @@ function Tabs() {
       />
       <Tab.Screen
         name="Food"
-        component={FoodScreen}
+        component={FoodTab}
         options={{
           tabBarLabel: 'Food',
           tabBarIcon: ({ focused, color, size }) => (
@@ -131,14 +131,19 @@ function Tabs() {
 }
 
 function RootNavigator() {
+  // Bypass authentication for development - always show main app
+  const BYPASS_AUTH = true;
+  
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (!BYPASS_AUTH && loading) return null;
+  
   return (
     <Stack.Navigator>
-      {user ? (
+      {BYPASS_AUTH || user ? (
         <>
           <Stack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
           <Stack.Screen name="Pokedex" component={PokedexScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="FoodLog" component={FoodTab} options={{ headerShown: false }} />
           <Stack.Screen name="FoodSearch" component={FoodSearchScreen} options={{ headerShown: false }} />
         </>
       ) : (
@@ -157,22 +162,18 @@ export default function App() {
     const testNetworkConnection = async () => {
       console.log('🔍 Testing network connection on app startup...');
       try {
-        const result = await backendApi.testConnection();
-        if (result.success) {
-          console.log('✅ Network connection successful:', result.data);
-        } else {
-          console.error('❌ Network connection failed:', result.error);
-          // 在开发模式下显示警告
-          if (__DEV__) {
-            Alert.alert(
-              'Network Connection Issue',
-              `Failed to connect to backend API: ${result.error}\n\nPlease check:\n1. Your internet connection\n2. Backend service status\n3. API URL configuration`,
-              [{ text: 'OK' }]
-            );
-          }
-        }
+        const result = await api.healthCheck();
+        console.log('✅ Network connection successful:', result);
       } catch (error) {
-        console.error('❌ Network test error:', error);
+        console.error('❌ Network connection failed:', error.message);
+        // 在开发模式下显示警告
+        if (__DEV__) {
+          Alert.alert(
+            'Network Connection Issue',
+            `Failed to connect to backend API: ${error.message}\n\nPlease check:\n1. Your internet connection\n2. Backend service status\n3. API URL configuration`,
+            [{ text: 'OK' }]
+          );
+        }
       }
     };
 
