@@ -71,6 +71,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     borderBottomWidth: 0,
     paddingHorizontal: spacing.md,
+    width: '100%',
   },
 
   tabBarLabel: {

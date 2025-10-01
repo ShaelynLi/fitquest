@@ -1,201 +1,214 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, globalStyles } from '../theme';
+import { colors, spacing, typography } from '../theme';
 
 /**
  * PlusScreen Component - Quick Actions Hub
  *
- * Updated with Aura Health design system - card-based layout with sophisticated styling.
- * Provides quick access to common user actions from the dedicated Plus tab.
- *
- * Features:
- * - Card-based action buttons with Aurora gradient colors
- * - Elegant typography using dual-font system
- * - Quick access to primary app functions
+ * Matches the reference design with simple action buttons.
+ * Clean, centered layout with quick access to primary app functions.
  */
 export default function PlusScreen({ navigation }) {
-  // Action handlers - will be connected to navigation
-  const handleStartRun = () => {
-    console.log('TODO: Navigate to Run tab in Home screen');
-  };
 
-  const handleLogMeal = () => {
-    navigation.navigate('FoodSearch', {
-      mealType: 'breakfast' // Default meal type, can be made dynamic later
-    });
-  };
+  const quickActions = [
+    {
+      icon: 'restaurant-outline',
+      title: 'Log Food',
+      color: colors.green[100],
+      iconColor: colors.green[600],
+      onPress: () => {
+        navigation.navigate('FoodSearch');
+      }
+    },
+    {
+      icon: 'barcode-outline',
+      title: 'Scan Barcode',
+      color: colors.blue[100],
+      iconColor: colors.blue[600],
+      onPress: () => {
+        // Navigate to barcode scanner
+        console.log('Barcode Scan - TODO');
+      }
+    },
+    {
+      icon: 'search-outline',
+      title: 'Search Food',
+      color: colors.purple[100],
+      iconColor: colors.purple[600],
+      onPress: () => {
+        navigation.navigate('FoodSearch');
+      }
+    },
+    {
+      icon: 'play-outline',
+      title: 'Start Running',
+      color: colors.pink[100],
+      iconColor: colors.pink[600],
+      onPress: () => {
+        // Navigate to Home screen and switch to Run tab
+        navigation.navigate('Main', { screen: 'Home', params: { initialTab: 'Run' } });
+      }
+    },
+    {
+      icon: 'water-outline',
+      title: 'Log Water',
+      color: colors.teal[100],
+      iconColor: colors.teal[600],
+      onPress: () => {
+        console.log('Log Water - TODO');
+      }
+    },
+    {
+      icon: 'fitness-outline',
+      title: 'Log Weight',
+      color: colors.yellow[100],
+      iconColor: colors.yellow[600],
+      onPress: () => {
+        console.log('Log Weight - TODO');
+      }
+    }
+  ];
 
-  const handleViewCollection = () => {
-    console.log('TODO: Navigate to Collection/Pokedex screen');
-  };
+  // Organize actions into categories
+  const foodActions = quickActions.slice(0, 3); // Log Food, Scan Barcode, Search Food
+  const fitnessActions = quickActions.slice(3, 4); // Start Running
+  const healthActions = quickActions.slice(4); // Log Water, Log Weight
 
-  const handleViewProgress = () => {
-    console.log('TODO: Navigate to Progress/Analytics screen');
-  };
+  const renderActionButton = (action, index) => (
+    <TouchableOpacity
+      key={index}
+      style={styles.actionButton}
+      onPress={action.onPress}
+    >
+      <Text style={styles.actionTitle}>{action.title}</Text>
+      <View style={[styles.iconContainer, { backgroundColor: action.color }]}>
+        <Ionicons
+          name={action.icon}
+          size={16}
+          color={action.iconColor}
+        />
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
-    <View style={globalStyles.screenContainer}>
-      <ScrollView style={globalStyles.contentContainer}>
-        {/* Header Section */}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={globalStyles.pageTitle}>Quick Actions</Text>
-          <Text style={globalStyles.bodyText}>
-            Access your most common tasks quickly
-          </Text>
+          <Text style={styles.headerTitle}>Quick Actions</Text>
+          <Text style={styles.headerSubtitle}>Access your most common tasks</Text>
         </View>
 
-        {/* Primary Actions */}
-        <View style={globalStyles.cardLarge}>
-          <Text style={globalStyles.sectionSubheader}>Primary Actions</Text>
-
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.aurora.green }]}
-            onPress={handleStartRun}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name="walk" size={28} color={colors.white} />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Start Run</Text>
-              <Text style={styles.actionDescription}>Begin GPS tracking</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.white} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.aurora.blue }]}
-            onPress={handleLogMeal}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name="restaurant" size={28} color={colors.white} />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Log Meal</Text>
-              <Text style={styles.actionDescription}>Track nutrition</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.white} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Secondary Actions */}
-        <View style={globalStyles.card}>
-          <Text style={globalStyles.sectionSubheader}>Explore</Text>
-
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.aurora.violet }]}
-            onPress={handleViewCollection}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name="apps" size={28} color={colors.white} />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Pet Collection</Text>
-              <Text style={styles.actionDescription}>View your pets</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.white} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.aurora.teal }]}
-            onPress={handleViewProgress}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name="analytics" size={28} color={colors.white} />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Progress</Text>
-              <Text style={styles.actionDescription}>View analytics</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.white} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick Stats */}
-        <View style={globalStyles.card}>
-          <Text style={globalStyles.sectionSubheader}>Today at a Glance</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={globalStyles.mediumNumber}>2.3</Text>
-              <Text style={globalStyles.secondaryText}>km walked</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={globalStyles.mediumNumber}>420</Text>
-              <Text style={globalStyles.secondaryText}>calories</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={globalStyles.mediumNumber}>3</Text>
-              <Text style={globalStyles.secondaryText}>meals</Text>
-            </View>
+        {/* Food & Nutrition Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Food & Nutrition</Text>
+          <View style={styles.actionsContainer}>
+            {foodActions.map((action, index) => renderActionButton(action, index))}
           </View>
         </View>
-      </ScrollView>
-    </View>
+
+        {/* Fitness Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Fitness</Text>
+          <View style={styles.actionsContainer}>
+            {fitnessActions.map((action, index) => renderActionButton(action, index))}
+          </View>
+        </View>
+
+        {/* Health Tracking Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Health Tracking</Text>
+          <View style={styles.actionsContainer}>
+            {healthActions.map((action, index) => renderActionButton(action, index))}
+          </View>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+  },
+
   header: {
     alignItems: 'center',
     marginBottom: spacing.xl,
-    paddingTop: spacing.lg,
   },
 
-  // Action Button Styling (Aurora colors)
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    borderRadius: 16,
-    marginBottom: spacing.md,
-    // Subtle shadow for depth
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-
-  actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-
-  actionContent: {
-    flex: 1,
-  },
-
-  actionTitle: {
-    fontSize: typography.sizes.lg,
-    fontFamily: typography.body, // Sans-serif for UI
-    fontWeight: typography.weights.semibold,
-    color: colors.white,
+  headerTitle: {
+    fontSize: typography.sizes.xxl,
+    fontFamily: typography.heading,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
 
-  actionDescription: {
-    fontSize: typography.sizes.sm,
+  headerSubtitle: {
+    fontSize: typography.sizes.md,
     fontFamily: typography.body,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 
-  // Stats Row
-  statsRow: {
+  section: {
+    marginBottom: spacing.xl,
+  },
+
+  sectionTitle: {
+    fontSize: typography.sizes.lg,
+    fontFamily: typography.heading,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    marginLeft: spacing.sm,
+  },
+
+  actionsContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    paddingVertical: spacing.xs,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+
+  actionButton: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginVertical: spacing.xs,
   },
 
-  statItem: {
+  actionTitle: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.medium,
+    color: colors.textPrimary,
+  },
+
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
 });

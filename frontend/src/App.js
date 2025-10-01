@@ -11,6 +11,7 @@ import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
 import RunTab from './tabs/RunTab';
 import PlusScreen from './screens/PlusScreen';
+import HistoryScreen from './screens/HistoryScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import PokedexScreen from './screens/PokedexScreen';
 import PetCollectionScreen from './screens/PetCollectionScreen';
@@ -113,12 +114,12 @@ function Tabs() {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={HistoryScreen}
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
-              name={focused ? 'person' : 'person-outline'}
+              name={focused ? 'document-text' : 'document-text-outline'}
               size={24}
               color={focused ? colors.textPrimary : colors.gray[400]}
             />
@@ -148,6 +149,7 @@ function RootNavigator() {
           <Stack.Screen name="Pokedex" component={PokedexScreen} options={{ headerShown: false }} />
           <Stack.Screen name="PetCollection" component={PetCollectionScreen} options={{ headerShown: false }} />
           <Stack.Screen name="FoodSearch" component={FoodSearchScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         </>
       ) : (
         <>
