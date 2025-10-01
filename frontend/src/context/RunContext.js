@@ -230,6 +230,14 @@ const calculatePace = (distance, duration) => {
   return durationMinutes / distanceKm; // minutes per km
 };
 
+// Format pace for display (e.g., 5.5 -> "5:30")
+const formatPace = (paceMinutes) => {
+  if (paceMinutes === 0) return "0:00";
+  const minutes = Math.floor(paceMinutes);
+  const seconds = Math.round((paceMinutes - minutes) * 60);
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
 const calculateCalories = (distance, duration, weight = 70) => {
   // Simple estimation: ~0.75 calories per kg per km
   const distanceKm = distance / 1000;
@@ -258,6 +266,7 @@ export const RunProvider = ({ children }) => {
   const stateRef = useRef(state);
   const pendingPointsRef = useRef([]); // GPS points waiting to be uploaded
   const uploadIntervalRef = useRef(null); // Interval for uploading points
+  const accuracyUpgradedRef = useRef(false); // Track if accuracy has been upgraded
 
   // Initialize location permissions
   const requestLocationPermissions = async () => {
@@ -343,11 +352,60 @@ export const RunProvider = ({ children }) => {
     }
 
     try {
+      // Quick GPS warmup with fallback
+      console.log('🔥 GPS warming up...');
+      
+      try {
+        // Try quick GPS first, then fallback to slower high accuracy
+        const initialLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced, // Balanced speed/accuracy
+          maximumAge: 15000, // Allow 15 second old position
+          timeout: 2000, // Very quick 2 second timeout
+        });
+        
+        console.log('✅ GPS warmup complete:', {
+          latitude: initialLocation.coords.latitude.toFixed(8),
+          longitude: initialLocation.coords.longitude.toFixed(8),
+          accuracy: initialLocation.coords.accuracy?.toFixed(1) + 'm'
+        });
+
+        // Update location immediately
+        dispatch({
+          type: RUN_ACTIONS.UPDATE_LOCATION,
+          payload: initialLocation.coords,
+        });
+
+        dispatch({
+          type: RUN_ACTIONS.ADD_ROUTE_POINT,
+          payload: {
+            latitude: initialLocation.coords.latitude,
+            longitude: initialLocation.coords.longitude,
+            timestamp: initialLocation.timestamp || Date.now(),
+          },
+        });
+      } catch (warmupError) {
+        console.log('⚠️ GPS warmup failed, starting tracking anyway:', warmupError.message);
+        // Continue with tracking even if warmup fails
+      }
+
+      // Trigger metrics update immediately
+      console.log('📊 Triggering initial metrics update');
+      dispatch({
+        type: RUN_ACTIONS.UPDATE_METRICS,
+        payload: {
+          distance: 0,
+          duration: 0,
+          currentPace: 0,
+          averagePace: 0,
+          calories: 0,
+        },
+      });
+      // Start with balanced accuracy, then upgrade to high accuracy after warmup
       locationSubscriptionRef.current = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.Balanced, // Better battery life, still accurate
-          timeInterval: 5000, // Update every 5 seconds (better battery)
-          distanceInterval: 5, // Update every 5 meters (good balance)
+          accuracy: Location.Accuracy.Balanced, // Start with balanced for speed
+          timeInterval: 2000, // Update every 2 seconds initially
+          distanceInterval: 5, // Update every 5 meters initially
           mayShowUserSettingsDialog: true, // Ask user to enable high accuracy
         },
         (location) => {
@@ -355,10 +413,10 @@ export const RunProvider = ({ children }) => {
           const timestamp = location.timestamp || Date.now();
           const newPoint = { latitude, longitude, timestamp };
 
-          // Filter out inaccurate GPS points
-          if (accuracy && accuracy > 50) { // Skip points with >50m accuracy
-            console.log('⚠️ Skipping inaccurate GPS point:', accuracy.toFixed(1) + 'm');
-            return;
+          // No accuracy filtering - accept all GPS points
+          // This ensures maximum data collection, especially useful for indoor/outdoor transitions
+          if (accuracy && accuracy > 0) {
+            console.log('📍 GPS Accuracy:', accuracy.toFixed(1) + 'm');
           }
 
           // Debug GPS data
@@ -385,6 +443,57 @@ export const RunProvider = ({ children }) => {
 
           // Add point to pending upload queue
           pendingPointsRef.current.push(newPoint);
+
+          // Upgrade to high accuracy after 30 seconds or 10 points
+          if (!accuracyUpgradedRef.current && 
+              (pendingPointsRef.current.length >= 10 || 
+               (Date.now() - stateRef.current.startTime) > 30000)) {
+            
+            console.log('🚀 Upgrading GPS to high accuracy...');
+            accuracyUpgradedRef.current = true;
+            
+            // Restart with high accuracy (async function)
+            const upgradeToHighAccuracy = async () => {
+              if (locationSubscriptionRef.current) {
+                locationSubscriptionRef.current.remove();
+              }
+              
+              locationSubscriptionRef.current = await Location.watchPositionAsync(
+                {
+                  accuracy: Location.Accuracy.BestForNavigation, // High accuracy
+                  timeInterval: 1000, // Update every 1 second
+                  distanceInterval: 1, // Update every 1 meter
+                  mayShowUserSettingsDialog: false, // Don't ask again
+                },
+                (location) => {
+                  const { latitude, longitude, accuracy, altitude, heading, speed } = location.coords;
+                  const timestamp = location.timestamp || Date.now();
+                  const newPoint = { latitude, longitude, timestamp };
+
+                  // No accuracy filtering - accept all GPS points
+                  if (accuracy && accuracy > 0) {
+                    console.log('📍 GPS Accuracy:', accuracy.toFixed(1) + 'm');
+                  }
+
+                  dispatch({
+                    type: RUN_ACTIONS.UPDATE_LOCATION,
+                    payload: location.coords,
+                  });
+
+                  dispatch({
+                    type: RUN_ACTIONS.ADD_ROUTE_POINT,
+                    payload: newPoint,
+                  });
+
+                  pendingPointsRef.current.push(newPoint);
+                }
+              );
+            };
+            
+            upgradeToHighAccuracy().catch(error => {
+              console.log('⚠️ Failed to upgrade GPS accuracy:', error.message);
+            });
+          }
         }
       );
     } catch (error) {

@@ -696,8 +696,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: spacing.sm,
     flex: 1,
-    maxWidth: 150, // 稍微增加宽度，更美观
-    minHeight: 56, // 确保一致的高度
+    maxWidth: 150, // Slightly increase width for better appearance
+    minHeight: 56, // Ensure consistent height
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
