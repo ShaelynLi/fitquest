@@ -61,6 +61,5 @@ app.include_router(foods_router)
 # API Routes with /api prefix for Firebase Hosting reverse proxy
 app.include_router(auth_router, prefix="/api/auth", tags=["api-auth"])
 app.include_router(workout_router, prefix="/api/workouts", tags=["api-workouts"])
-app.include_router(meals_router, prefix="/api")
 app.include_router(users_router, prefix="/api/users", tags=["api-users"])
 app.include_router(foods_router, prefix="/api")

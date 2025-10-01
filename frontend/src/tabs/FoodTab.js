@@ -12,6 +12,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle } from 'react-native-svg';
 import { colors, spacing, typography, globalStyles } from '../theme';
 
 /**
@@ -238,7 +239,7 @@ export default function FoodTab({ navigation, route }) {
               styles.progressBarFill,
               { 
                 width: `${percentage}%`,
-                backgroundColor: isOverGoal ? colors.red[400] : colors.aurora.blue
+                backgroundColor: isOverGoal ? colors.error : colors.aurora.blue
               }
             ]}
           />
@@ -327,76 +328,171 @@ export default function FoodTab({ navigation, route }) {
     );
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* A. Date Selector */}
-      <DateSelector />
+  // Create new CircularProgress component
+  const CircularProgress = ({ percentage, size = 64, strokeWidth = 6, color, backgroundColor = colors.gray[100] }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDasharray = circumference;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* B. Daily Nutrition Summary Card */}
-        <View style={globalStyles.cardLarge}>
-          <Text style={globalStyles.sectionHeader}>
-            {selectedDate.toDateString() === new Date().toDateString() 
-              ? "Today's Nutrition" 
-              : "Daily Nutrition"}
-          </Text>
-          
-          {/* Large Calorie Progress Bar */}
-          <CalorieProgressBar
-            current={dailyTotals.calories}
-            goal={dailyGoals.calories}
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <Svg width={size} height={size} style={{ position: 'absolute' }}>
+          {/* Background circle */}
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={backgroundColor}
+            strokeWidth={strokeWidth}
+            fill="none"
           />
+          {/* Progress circle */}
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeDasharray={strokeDasharray}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        </Svg>
+        {/* Center icon */}
+        <View style={{
+          width: 20,
+          height: 20,
+          backgroundColor: color + '20',
+          borderRadius: 8,
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <View style={{
+            width: 10,
+            height: 10,
+            backgroundColor: color,
+            borderRadius: 4,
+          }} />
+        </View>
+      </View>
+    );
+  };
 
-          {/* Macronutrient Breakdown */}
-          <View style={styles.macroBreakdown}>
-            <Text style={[globalStyles.secondaryText, { marginBottom: spacing.sm }]}>
-              Macronutrient Breakdown
+  const MacroCircle = ({ label, current, goal, color }) => {
+    const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+    return (
+      <View style={styles.macroCircleContainer}>
+        <CircularProgress
+          percentage={percentage}
+          color={color}
+          size={64}
+          strokeWidth={6}
+        />
+        <Text style={styles.macroLabel}>{label}</Text>
+        <Text style={styles.macroText}>{Math.round(current)} / {Math.round(goal)}g</Text>
+      </View>
+    );
+  };
+
+  const MealCard = ({ title, calories = 0, onPress }) => (
+    <View style={styles.mealCard}>
+      <View style={styles.mealCardHeader}>
+        <Text style={styles.mealCardTitle}>{title}</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={onPress}
+        >
+          <Ionicons name="add" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.mealCardContent}>
+        <Text style={styles.mealCardEmpty}>No food logged</Text>
+        <Text style={styles.mealCardCalories}>{calories} kcal</Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Intake and Macronutrients Combined Card */}
+      <View style={styles.nutritionCard}>
+        {/* Intake Section */}
+        <View style={styles.intakeSection}>
+          <Text style={styles.cardLabel}>Intake</Text>
+          <View style={styles.intakeContent}>
+            <View style={styles.intakeNumbers}>
+              <Text style={styles.mainIntakeNumber}>{dailyTotals.calories}</Text>
+              <Text style={styles.intakeUnit}>kcal</Text>
+            </View>
+            <Text style={styles.remainingText}>
+              {Math.max(dailyGoals.calories - dailyTotals.calories, 0).toLocaleString()} remaining
             </Text>
-            <View style={styles.macroRow}>
-              <View style={styles.macroItem}>
-                <Text style={globalStyles.bodyText}>Protein</Text>
-                <Text style={globalStyles.secondaryText}>
-                  {Math.round(dailyTotals.protein)} / {dailyGoals.protein}g
-                </Text>
+
+            {/* Progress Bar */}
+            <View style={styles.intakeProgressContainer}>
+              <View style={styles.intakeProgressLabels}>
+                <Text style={styles.progressLabel}>0</Text>
+                <Text style={styles.progressLabel}>{dailyGoals.calories.toLocaleString()}</Text>
               </View>
-              <View style={styles.macroItem}>
-                <Text style={globalStyles.bodyText}>Carbs</Text>
-                <Text style={globalStyles.secondaryText}>
-                  {Math.round(dailyTotals.carbs)} / {dailyGoals.carbs}g
-                </Text>
-              </View>
-              <View style={styles.macroItem}>
-                <Text style={globalStyles.bodyText}>Fat</Text>
-                <Text style={globalStyles.secondaryText}>
-                  {Math.round(dailyTotals.fat)} / {dailyGoals.fat}g
-                </Text>
+              <View style={styles.intakeProgressBar}>
+                <View
+                  style={[
+                    styles.intakeProgressFill,
+                    { width: `${Math.min((dailyTotals.calories / dailyGoals.calories) * 100, 100)}%` }
+                  ]}
+                />
               </View>
             </View>
           </View>
         </View>
 
-        {/* C. Meal Logging Cards */}
-        <MealSection
-          mealType="breakfast"
-          foods={meals.breakfast}
-          icon="sunny"
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Macronutrients Section */}
+        <View style={styles.macronutrientsSection}>
+          <MacroCircle
+            label="Carbs"
+            current={dailyTotals.carbs}
+            goal={dailyGoals.carbs}
+            color={colors.purple[500]}
+          />
+          <MacroCircle
+            label="Fats"
+            current={dailyTotals.fat}
+            goal={dailyGoals.fat}
+            color={colors.yellow[500]}
+          />
+          <MacroCircle
+            label="Protein"
+            current={dailyTotals.protein}
+            goal={dailyGoals.protein}
+            color={colors.pink[500]}
+          />
+        </View>
+      </View>
+
+      {/* Meal Sections */}
+      <View style={styles.mealSections}>
+        <MealCard
+          title="Breakfast"
+          calories={meals.breakfast.reduce((sum, food) => sum + food.calories, 0)}
+          onPress={() => openFoodSearch('breakfast')}
         />
-        <MealSection
-          mealType="lunch"
-          foods={meals.lunch}
-          icon="partly-sunny"
+        <MealCard
+          title="Lunch"
+          calories={meals.lunch.reduce((sum, food) => sum + food.calories, 0)}
+          onPress={() => openFoodSearch('lunch')}
         />
-        <MealSection
-          mealType="dinner"
-          foods={meals.dinner}
-          icon="moon"
+        <MealCard
+          title="Dinner"
+          calories={meals.dinner.reduce((sum, food) => sum + food.calories, 0)}
+          onPress={() => openFoodSearch('dinner')}
         />
-        <MealSection
-          mealType="snacks"
-          foods={meals.snacks}
-          icon="cafe"
-        />
-      </ScrollView>
+      </View>
 
       {/* Add Meal Modal */}
       <Modal
@@ -479,7 +575,7 @@ export default function FoodTab({ navigation, route }) {
           </ScrollView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
@@ -488,168 +584,187 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
+    padding: spacing.md,
   },
 
-  // A. Date Selector Styles
-  dateSelector: {
-    backgroundColor: colors.background,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  // Nutrition Card
+  nutritionCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  dateScrollContent: {
-    paddingHorizontal: spacing.md,
+
+  // Intake Section
+  intakeSection: {
+    marginBottom: spacing.lg,
+  },
+
+  cardLabel: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+
+  intakeContent: {
     gap: spacing.sm,
   },
-  dateItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minWidth: 60,
+
+  intakeNumbers: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.xs,
   },
-  dateItemActive: {
-    backgroundColor: colors.textPrimary,
-  },
-  dateDayText: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.medium,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  dateNumberText: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
+
+  mainIntakeNumber: {
+    fontSize: 32,
+    fontFamily: typography.heading,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
   },
-  dateActiveText: {
-    color: colors.white,
+
+  intakeUnit: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
   },
 
-  // B. Calorie Progress Bar Styles
-  calorieProgressContainer: {
+  remainingText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+  },
+
+  // Intake Progress Bar
+  intakeProgressContainer: {
+    marginTop: spacing.md,
+  },
+
+  intakeProgressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+
+  progressLabel: {
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+  },
+
+  intakeProgressBar: {
+    height: 6,
+    backgroundColor: colors.gray[100],
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+
+  intakeProgressFill: {
+    height: '100%',
+    backgroundColor: colors.green[500],
+    borderRadius: 3,
+  },
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: colors.gray[100],
     marginVertical: spacing.lg,
   },
-  calorieHeader: {
+
+  // Macronutrients Section
+  macronutrientsSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: spacing.lg,
+  },
+
+  macroCircleContainer: {
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  macroLabel: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+
+  macroText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textPrimary,
+  },
+
+  // Meal Sections
+  mealSections: {
+    gap: spacing.md,
+  },
+
+  mealCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: spacing.lg,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+
+  mealCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  progressBarContainer: {
-    height: 12,
-    backgroundColor: colors.gray[200],
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 6,
+
+  mealCardTitle: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
   },
 
-  // Macronutrient Breakdown
-  macroBreakdown: {
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  macroRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  macroItem: {
-    alignItems: 'center',
-    flex: 1,
+  addButton: {
+    padding: spacing.sm,
+    borderRadius: 12,
+    backgroundColor: colors.gray[50],
   },
 
-  // C. Meal Section Styles - Enhanced
-  mealHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  mealCardContent: {
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    paddingVertical: spacing.xl,
   },
-  mealTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+
+  mealCardEmpty: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
   },
-  mealTitle: {
-    fontSize: typography.sizes.lg,
-    fontFamily: typography.heading,
+
+  mealCardCalories: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
   },
-  mealCalories: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.medium,
-    color: colors.textSecondary,
-  },
-  
-  // Food List Styles
-  foodList: {
-    marginBottom: spacing.md,
-  },
-  foodItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.gray[50],
-    borderRadius: 12,
-    marginBottom: spacing.sm,
-  },
-  foodItemInfo: {
-    flex: 1,
-  },
-  
-  // Empty State
-  emptyMealContainer: {
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-  },
-  emptyMeal: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  
-  // Prominent Add Food Button
-  addFoodButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.textPrimary,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    gap: spacing.sm,
-  },
-  addFoodButtonText: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.medium,
-    color: colors.textPrimary,
-  },
 
-  // Modal Styles - Updated
+  // Modal Styles
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -661,9 +776,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+
   inputGroup: {
     marginBottom: spacing.lg,
   },
+
   textInput: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -675,10 +792,12 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginTop: spacing.sm,
   },
+
   macroInputs: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+
   macroInput: {
     flex: 1,
     marginHorizontal: spacing.xs,

@@ -15,3 +15,6 @@ export { default as BarcodeScanner } from './food/BarcodeScanner';
 export { default as PreRunScreen } from './run/PreRunScreen';
 export { default as ActiveRunScreen } from './run/ActiveRunScreen';
 export { default as RunSummaryScreen } from './run/RunSummaryScreen';
+
+// Gamification Components
+export { default as BlindBoxModal } from './gamification/BlindBoxModal';

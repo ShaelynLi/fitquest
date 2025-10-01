@@ -5,6 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { GamificationProvider } from './context/GamificationContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -12,6 +13,7 @@ import RunTab from './tabs/RunTab';
 import PlusScreen from './screens/PlusScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import PokedexScreen from './screens/PokedexScreen';
+import PetCollectionScreen from './screens/PetCollectionScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
 import FoodTab from './tabs/FoodTab';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,19 +30,30 @@ function Tabs() {
         headerShown: false,
         tabBarStyle: {
           position: 'absolute',
-          bottom: 34,
-          marginHorizontal: 16,
-          backgroundColor: colors.black,
-          borderRadius: 25,
-          height: 60,
-          paddingBottom: 8,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: colors.white,
+          borderTopWidth: 1,
+          borderTopColor: colors.gray[200],
+          height: 88,
+          paddingBottom: 34, // Safe area for newer devices
           paddingTop: 8,
-          borderWidth: 1,
-          borderColor: colors.black,
+          paddingHorizontal: 0,
         },
-        tabBarActiveTintColor: colors.white,
+        tabBarActiveTintColor: colors.textPrimary,
         tabBarInactiveTintColor: colors.gray[400],
         tabBarShowLabel: false,
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+          marginTop: 4,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 8,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
       }}
     >
       <Tab.Screen
@@ -51,65 +64,51 @@ function Tabs() {
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
-              size={size}
-              color={color}
+              size={24}
+              color={focused ? colors.textPrimary : colors.gray[400]}
             />
           ),
-        }}
-      />
-      <Tab.Screen
-        name="Run"
-        component={RunTab}
-        options={{
-          tabBarLabel: 'Run',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'walk' : 'walk-outline'}
-              size={size}
-              color={color}
-            />
-          ),
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '500',
+          },
         }}
       />
       <Tab.Screen
         name="Plus"
         component={PlusScreen}
         options={{
-          tabBarLabel: '',
+          tabBarLabel: 'Add',
           tabBarIcon: ({ focused, color, size }) => (
             <View
               style={{
-                backgroundColor: focused ? colors.white : colors.gray[600],
-                borderWidth: 1,
-                borderColor: focused ? colors.white : colors.gray[500],
-                borderRadius: 25,
-                width: 40,
-                height: 40,
-                justifyContent: 'center',
                 alignItems: 'center',
+                justifyContent: 'center',
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: colors.textPrimary,
+                shadowColor: colors.black,
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
               }}
             >
               <Ionicons
                 name="add"
                 size={20}
-                color={focused ? colors.black : colors.white}
+                color={colors.white}
               />
             </View>
           ),
-        }}
-      />
-      <Tab.Screen
-        name="Food"
-        component={FoodTab}
-        options={{
-          tabBarLabel: 'Food',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'restaurant' : 'restaurant-outline'}
-              size={size}
-              color={color}
-            />
-          ),
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '500',
+          },
         }}
       />
       <Tab.Screen
@@ -120,10 +119,14 @@ function Tabs() {
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}
-              size={size}
-              color={color}
+              size={24}
+              color={focused ? colors.textPrimary : colors.gray[400]}
             />
           ),
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '500',
+          },
         }}
       />
     </Tab.Navigator>
@@ -143,7 +146,7 @@ function RootNavigator() {
         <>
           <Stack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
           <Stack.Screen name="Pokedex" component={PokedexScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="FoodLog" component={FoodTab} options={{ headerShown: false }} />
+          <Stack.Screen name="PetCollection" component={PetCollectionScreen} options={{ headerShown: false }} />
           <Stack.Screen name="FoodSearch" component={FoodSearchScreen} options={{ headerShown: false }} />
         </>
       ) : (
@@ -185,9 +188,11 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <RootNavigator />
-      </NavigationContainer>
+      <GamificationProvider>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </GamificationProvider>
     </AuthProvider>
   );
 }

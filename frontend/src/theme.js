@@ -67,26 +67,26 @@ export const spacing = {
 };
 
 /**
- * Aura Health Design System - Color Palette
+ * Updated Design System - Based on Modern Design Tokens
  *
- * Philosophy: Sophisticated Data + Collectible Fun
- * Modern shell with illustrative content elements
+ * Matches the provided CSS custom properties with refined color palette
+ * Using OKLCH color space values converted to hex for React Native compatibility
  */
 export const colors = {
-  // Base Palette (Light Mode)
-  background: '#F5F5F7',        // Light grey main background
-  surface: '#FFFFFF',           // Pure white cards and surfaces
-  cardBg: '#FFFFFF',            // White card background
+  // Base Palette (Light Mode) - Matching CSS custom properties
+  background: '#DCDEE2',        // --background
+  surface: '#ffffff',           // --card
+  cardBg: '#ffffff',            // Same as surface
 
   // Essential UI Colors
-  black: '#000000',             // Pure black
-  white: '#FFFFFF',             // Pure white
+  black: '#030213',             // --primary (dark blue-black)
+  white: '#ffffff',             // Pure white
 
-  // Text Colors (Refined hierarchy)
-  textPrimary: '#1A1A1A',       // Near black / dark grey
-  textSecondary: '#8E8E93',     // Medium grey for labels
-  textTertiary: '#C7C7CC',      // Light grey for placeholders
-  textInverse: '#FFFFFF',       // White text for dark backgrounds
+  // Text Colors (From design tokens)
+  textPrimary: '#030213',       // --foreground (dark blue-black)
+  textSecondary: '#717182',     // --muted-foreground (medium grey)
+  textTertiary: '#cbced4',      // Lighter grey for placeholders
+  textInverse: '#ffffff',       // White text for dark backgrounds
 
   // Aurora Gradient Palette (For charts, graphs, progress bars)
   aurora: {
@@ -165,31 +165,41 @@ export const colors = {
     700: '#A16207',
   },
 
-  // Neutral Greys (For backgrounds and borders)
+  // Updated Design Token Colors
+  primary: '#030213',           // --primary
+  primaryForeground: '#ffffff', // --primary-foreground
+  secondary: '#f0f0f3',         // --secondary (OKLCH to hex approximation)
+  secondaryForeground: '#030213', // --secondary-foreground
+  muted: '#ececf0',             // --muted
+  mutedForeground: '#717182',   // --muted-foreground
+  accent: '#e9ebef',            // --accent
+  accentForeground: '#030213',  // --accent-foreground
+
+  // Neutral Greys (Updated to match design tokens)
   gray: {
-    50: '#FAFAFA',
-    100: '#F5F5F7',
-    200: '#E5E5EA',
-    300: '#D1D1D6',
-    400: '#C7C7CC',
-    500: '#8E8E93',
-    600: '#6D6D70',
-    700: '#48484A',
-    800: '#2C2C2E',
-    900: '#1A1A1A',
+    50: '#f9f9fb',
+    100: '#f3f3f5',              // --input-background
+    200: '#ececf0',              // --muted
+    300: '#e9ebef',              // --accent
+    400: '#cbced4',              // --switch-background
+    500: '#717182',              // --muted-foreground
+    600: '#5a5a6b',
+    700: '#404051',
+    800: '#2a2a3a',
+    900: '#030213',              // --primary
   },
 
-  // Semantic Colors
-  success: '#34C759',           // Energetic Green
-  warning: '#FF9500',           // Warm Orange
-  error: '#FF2D55',             // Warm Red/Pink
-  info: '#007AFF',              // Vibrant Blue
+  // Semantic Colors (Updated)
+  success: '#22c55e',           // Modern green
+  warning: '#f59e0b',           // Modern amber
+  error: '#d4183d',             // --destructive
+  info: '#3b82f6',              // Modern blue
 
-  // UI Elements
-  border: '#E5E5EA',            // Light border
-  borderStrong: '#8E8E93',      // Stronger border
-  separator: '#F5F5F7',         // Subtle separator
-  divider: '#E5E5EA',           // Section divider
+  // UI Elements (Updated to match design tokens)
+  border: 'rgba(0, 0, 0, 0.1)', // --border
+  borderStrong: '#717182',      // Stronger border
+  separator: '#f3f3f5',         // Subtle separator
+  divider: 'rgba(0, 0, 0, 0.1)', // Section divider
 
   // Status Meter Colors (Pet system)
   energyColor: '#FF9500',       // Orange for energy

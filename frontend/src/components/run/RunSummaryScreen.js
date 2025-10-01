@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import MapView, { Polyline, Marker } from 'react-native-maps';
 import { colors, spacing, typography, globalStyles } from '../../theme';
 import { useRun } from '../../context/RunContext';
+import { useGamification } from '../../context/GamificationContext';
 
 /**
  * RunSummaryScreen Component - Post-Run Results
@@ -41,8 +42,12 @@ export default function RunSummaryScreen() {
     resetRun,
   } = useRun();
 
+  const { updateRunningProgress } = useGamification();
+
   const [mapRegion, setMapRegion] = useState(null);
   const [mapError, setMapError] = useState(false);
+  const [rewardsEarned, setRewardsEarned] = useState([]);
+  const [showRewards, setShowRewards] = useState(false);
 
   // Calculate map region based on route points
   useEffect(() => {
@@ -66,6 +71,23 @@ export default function RunSummaryScreen() {
       });
     }
   }, [routePoints]);
+
+  // Check for rewards on component mount
+  useEffect(() => {
+    checkForRewards();
+  }, []);
+
+  const checkForRewards = async () => {
+    try {
+      const achievements = await updateRunningProgress(distance);
+      if (achievements.length > 0) {
+        setRewardsEarned(achievements);
+        setShowRewards(true);
+      }
+    } catch (error) {
+      console.error('Failed to check for rewards:', error);
+    }
+  };
 
   // Format time as HH:MM:SS or MM:SS
   const formatTime = (seconds) => {

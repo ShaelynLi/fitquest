@@ -298,10 +298,24 @@ class FatSecretService:
 
         transformed_foods = [self._transform_food_item(food) for food in food_list]
 
+        # Safely convert to int, handling None values
+        total_results = foods_search.get("total_results", 0)
+        page_number = foods_search.get("page_number", 0)
+        
+        try:
+            total_results = int(total_results) if total_results is not None else 0
+        except (ValueError, TypeError):
+            total_results = 0
+            
+        try:
+            page_number = int(page_number) if page_number is not None else 0
+        except (ValueError, TypeError):
+            page_number = 0
+
         return {
             "foods": transformed_foods,
-            "total_results": int(foods_search.get("total_results", 0)),
-            "page_number": int(foods_search.get("page_number", 0)),
+            "total_results": total_results,
+            "page_number": page_number,
         }
 
     def _transform_food_item(self, food: Dict[str, Any]) -> Dict[str, Any]:

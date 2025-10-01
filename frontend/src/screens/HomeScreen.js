@@ -61,16 +61,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingTop: 60, // Status bar padding
-    paddingBottom: 100, // Bottom tab bar padding
+    paddingBottom: 88, // Bottom tab bar padding (match new tab height)
   },
 
   // Top Tab Navigator Styling (Aura Health design)
   tabBar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     elevation: 0,
     shadowOpacity: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomWidth: 0,
     paddingHorizontal: spacing.md,
   },
 
