@@ -9,35 +9,31 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 // Backend API Configuration
-<<<<<<< HEAD
-// For physical device testing, use your computer's local IP address
+// For development: use local backend with FatSecret credentials
+// For production: use deployed backend
 const getBackendUrl = () => {
   if (__DEV__) {
-    // Debug: Log backend detection (reduced logging)
+    // Development: use local backend
     console.log('=== Backend Detection ===');
     console.log('debuggerHost:', Constants.debuggerHost);
     console.log('hostUri:', Constants.hostUri);
     console.log('Platform.OS:', Platform.OS);
     console.log('=========================');
-    
+
     // Try to detect if running in Expo Go (physical device) vs simulator
-    // Use the newer Constants.expoConfig for Expo SDK 46+
-    const expoConfig = Constants.expoConfig || Constants.manifest;
-    const manifest2 = Constants.manifest2;
-    
-    // Try multiple methods to detect the development server IP
     let debuggerHost = null;
     
-    if (manifest2?.extra?.expoGo?.debuggerHost) {
-      debuggerHost = manifest2.extra.expoGo.debuggerHost;
-    } else if (expoConfig?.debuggerHost) {
-      debuggerHost = expoConfig.debuggerHost;
+    // Try multiple methods to detect the development server IP
+    if (Constants.manifest2?.extra?.expoGo?.debuggerHost) {
+      debuggerHost = Constants.manifest2.extra.expoGo.debuggerHost;
+    } else if (Constants.expoConfig?.debuggerHost) {
+      debuggerHost = Constants.expoConfig.debuggerHost;
     } else if (Constants.debuggerHost) {
       debuggerHost = Constants.debuggerHost;
     }
 
     if (debuggerHost) {
-      // Extract IP from debuggerHost (works for Expo Go)
+      // Extract IP from debuggerHost (works for Expo Go on physical devices)
       const ip = debuggerHost.split(':')[0];
       console.log('Detected backend IP from debuggerHost:', ip);
       return `http://${ip}:8000`;
@@ -53,26 +49,17 @@ const getBackendUrl = () => {
     // Fallback based on platform for simulator vs device
     if (Platform.OS === 'ios') {
       console.log('Using localhost for iOS simulator');
-      return 'http://localhost:8000';
+      return 'http://localhost:8000';  // iOS Simulator
     } else {
-      // Android emulator uses 10.0.2.2 to reach host machine
       console.log('Using Android emulator localhost');
-      return 'http://10.0.2.2:8000';
+      return 'http://10.0.2.2:8000';  // Android Emulator
     }
   }
-
-  // Production
-  return 'https://your-production-backend.com';
+  // Production: use deployed backend
+  return 'https://comp90018-t8-g2.web.app';
 };
 
 const BACKEND_BASE_URL = getBackendUrl();
-console.log('Backend URL:', BACKEND_BASE_URL);
-=======
-// 在移动设备上测试时，即使在开发模式也使用生产API
-const BACKEND_BASE_URL = __DEV__
-  ? 'https://comp90018-t8-g2.web.app'  // Development: Use production API for mobile testing
-  : 'https://comp90018-t8-g2.web.app';  // Production: Firebase Hosting with reverse proxy
->>>>>>> origin/test
 
 class BackendApiService {
   constructor() {
@@ -92,7 +79,6 @@ class BackendApiService {
         'Accept': 'application/json',
         ...options.headers,
       },
-      // 增加超时和重试配置
       timeout: 15000,
     };
 
@@ -100,21 +86,17 @@ class BackendApiService {
 
     try {
       console.log('Backend API request:', url);
-<<<<<<< HEAD
-      console.log('Base URL:', this.baseUrl);
-=======
       console.log('Request options:', JSON.stringify(requestOptions, null, 2));
->>>>>>> origin/test
 
-      // 创建带超时的fetch请求
+      // Create fetch with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
-      
+
       const response = await fetch(url, {
         ...requestOptions,
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
 
       console.log('Response status:', response.status);
@@ -138,14 +120,13 @@ class BackendApiService {
         stack: error.stack,
         url: url,
       });
-      
-      // 提供更详细的错误信息
+
       if (error.name === 'AbortError') {
         throw new Error('Request timeout - please check your internet connection');
-      } else if (error.message.includes('Network request failed')) {
+      } else if (error.message && error.message.includes('Network request failed')) {
         throw new Error('Network connection failed - please check your internet connection and try again');
       }
-      
+
       throw error;
     }
   }
@@ -192,24 +173,6 @@ class BackendApiService {
       throw new Error('Food search failed');
     }
   }
-
-<<<<<<< HEAD
-=======
-  /**
-   * Search for food by barcode
-   *
-   * @param {string} barcode - Barcode to search for
-   * @returns {Promise<Object>} Search result with food information
-   */
-  async searchFoodByBarcode(barcode) {
-    if (!barcode || barcode.trim().length < 8) {
-      throw new Error('Invalid barcode format');
-    }
-
-    const response = await this.makeRequest(`/api/foods/barcode/${barcode.trim()}`);
-    return response;
-  }
->>>>>>> origin/test
 
   /**
    * Get detailed food information
@@ -305,12 +268,8 @@ class BackendApiService {
       throw new Error('Invalid barcode format');
     }
 
-<<<<<<< HEAD
     try {
-      const response = await this.makeRequest(`/foods/barcode/${barcode.trim()}`);
-=======
-    const response = await this.makeRequest(`/api/foods/barcode/${barcode.trim()}`);
->>>>>>> origin/test
+      const response = await this.makeRequest(`/api/foods/barcode/${barcode.trim()}`);
 
       // Handle successful response with food data
       if (response && response.success && response.food) {
@@ -398,7 +357,7 @@ class BackendApiService {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return await this.makeRequest('/api/workouts/start', {
       method: 'POST',
       headers,
@@ -421,7 +380,7 @@ class BackendApiService {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return await this.makeRequest('/api/workouts/add-points', {
       method: 'POST',
       headers,
@@ -444,7 +403,7 @@ class BackendApiService {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return await this.makeRequest('/api/workouts/finish', {
       method: 'POST',
       headers,
