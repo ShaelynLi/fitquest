@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, useRef } from 
 import * as Location from 'expo-location';
 import { Alert } from 'react-native';
 import { api } from '../services';
+import { useAuth } from './AuthContext';
 
 /**
  * RunContext - GPS Run Tracking State Management
@@ -258,6 +259,7 @@ export const useRun = () => {
 // Provider component
 export const RunProvider = ({ children }) => {
   const [state, dispatch] = useReducer(runReducer, initialState);
+  const { token } = useAuth();
 
   // Use refs to persist across re-renders
   const locationSubscriptionRef = useRef(null);
@@ -314,7 +316,7 @@ export const RunProvider = ({ children }) => {
         t_ms: point.timestamp,
       }));
 
-      await api.addWorkoutPoints(currentState.sessionId, formattedPoints);
+      await api.addWorkoutPoints(currentState.sessionId, formattedPoints, token);
       console.log(`📍 Uploaded ${formattedPoints.length} GPS points to backend`);
     } catch (error) {
       console.error('❌ Failed to upload GPS points:', error);
@@ -329,8 +331,9 @@ export const RunProvider = ({ children }) => {
       clearInterval(uploadIntervalRef.current);
     }
     
-    // Upload points every 10 seconds
-    uploadIntervalRef.current = setInterval(uploadPendingPoints, 10000);
+    // Upload points every 5 seconds for better real-time sync
+    uploadIntervalRef.current = setInterval(uploadPendingPoints, 5000);
+    console.log('📤 GPS point upload started');
   };
 
   // Stop periodic GPS point upload
@@ -571,18 +574,13 @@ export const RunProvider = ({ children }) => {
         await startLocationTracking();
         startMetricsTracking();
         
-        // Try to create workout session in backend (optional)
-        // Note: This requires user authentication, so it's disabled for now
-        // TODO: Add authentication integration
+        // Try to create workout session in backend
         try {
-          // For now, skip backend integration and run in offline mode
-          // const startTime = Date.now();
-          // const session = await api.startWorkout('run', startTime, userToken);
-          // dispatch({ type: RUN_ACTIONS.SET_SESSION_ID, payload: session.id });
-          // startPointUpload();
-          // console.log('✅ Workout session started with backend:', session.id);
-          
-          console.log('ℹ️ Running in offline mode - GPS tracking active');
+          const startTime = Date.now();
+          const session = await api.startWorkout('run', startTime, token);
+          dispatch({ type: RUN_ACTIONS.SET_SESSION_ID, payload: session.id });
+          startPointUpload();
+          console.log('✅ Workout session started with backend:', session.id);
         } catch (backendError) {
           console.warn('⚠️ Backend unavailable, running in offline mode:', backendError.message);
         }
@@ -629,7 +627,7 @@ export const RunProvider = ({ children }) => {
           try {
             stopPointUpload(); // Upload any remaining points
             const endTime = Date.now();
-            const finalSession = await api.finishWorkout(currentState.sessionId, endTime);
+            const finalSession = await api.finishWorkout(currentState.sessionId, endTime, token);
             console.log('✅ Workout session completed and saved to backend:', finalSession);
           } catch (backendError) {
             console.warn('⚠️ Failed to save to backend, but local workout completed:', backendError.message);

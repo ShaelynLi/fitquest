@@ -430,6 +430,37 @@ class BackendApiService {
   async getWorkout(sessionId) {
     return await this.makeRequest(`/api/workouts/${sessionId}`);
   }
+
+  /**
+   * Complete user onboarding
+   * @param {Object} userData - Complete user onboarding data
+   * @returns {Promise<Object>} Onboarding response
+   */
+  async completeOnboarding(userData) {
+    return await this.makeRequest('/api/users/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  /**
+   * Update user profile
+   * @param {string} token - Auth token
+   * @param {Object} profileData - Profile data to update
+   * @returns {Promise<Object>} Update response
+   */
+  async updateUserProfile(token, profileData) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return await this.makeRequest('/api/users/update_profile', {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(profileData),
+    });
+  }
 }
 
 // Create singleton instance
