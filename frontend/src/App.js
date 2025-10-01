@@ -7,6 +7,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
+import WelcomeScreen from './screens/WelcomeScreen';
 import HomeScreen from './screens/HomeScreen';
 import RunTab from './tabs/RunTab';
 import PlusScreen from './screens/PlusScreen';
@@ -131,25 +133,27 @@ function Tabs() {
 }
 
 function RootNavigator() {
-  // Bypass authentication for development - always show main app
-  const BYPASS_AUTH = true;
+  const { user, loading, isOnboarded } = useAuth();
   
-  const { user, loading } = useAuth();
-  if (!BYPASS_AUTH && loading) return null;
+  if (loading) return null;
   
   return (
     <Stack.Navigator>
-      {BYPASS_AUTH || user ? (
+      {user && isOnboarded ? (
         <>
           <Stack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
           <Stack.Screen name="Pokedex" component={PokedexScreen} options={{ headerShown: false }} />
           <Stack.Screen name="FoodLog" component={FoodTab} options={{ headerShown: false }} />
           <Stack.Screen name="FoodSearch" component={FoodSearchScreen} options={{ headerShown: false }} />
         </>
+      ) : user && !isOnboarded ? (
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
       ) : (
         <>
+          <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
         </>
       )}
     </Stack.Navigator>

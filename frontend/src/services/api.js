@@ -36,23 +36,23 @@ const getBackendUrl = () => {
       // Extract IP from debuggerHost (works for Expo Go on physical devices)
       const ip = debuggerHost.split(':')[0];
       console.log('Detected backend IP from debuggerHost:', ip);
-      return `http://${ip}:8000`;
+      return `http://${ip}:8001`;
     }
 
     // Additional check: if we have a hostUri, extract IP from it
     if (Constants.hostUri) {
       const ip = Constants.hostUri.split(':')[0];
       console.log('Detected backend IP from hostUri:', ip);
-      return `http://${ip}:8000`;
+      return `http://${ip}:8001`;
     }
 
     // Fallback based on platform for simulator vs device
     if (Platform.OS === 'ios') {
       console.log('Using localhost for iOS simulator');
-      return 'http://localhost:8000';  // iOS Simulator
+      return 'http://localhost:8001';  // iOS Simulator
     } else {
       console.log('Using Android emulator localhost');
-      return 'http://10.0.2.2:8000';  // Android Emulator
+      return 'http://10.0.2.2:8001';  // Android Emulator
     }
   }
   // Production: use deployed backend
@@ -429,6 +429,37 @@ class BackendApiService {
    */
   async getWorkout(sessionId) {
     return await this.makeRequest(`/api/workouts/${sessionId}`);
+  }
+
+  /**
+   * Complete user onboarding
+   * @param {Object} userData - Complete user onboarding data
+   * @returns {Promise<Object>} Onboarding response
+   */
+  async completeOnboarding(userData) {
+    return await this.makeRequest('/api/users/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  /**
+   * Update user profile
+   * @param {string} token - Auth token
+   * @param {Object} profileData - Profile data to update
+   * @returns {Promise<Object>} Update response
+   */
+  async updateUserProfile(token, profileData) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return await this.makeRequest('/api/users/update_profile', {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(profileData),
+    });
   }
 }
 
