@@ -109,8 +109,6 @@ class BackendApiService {
       }
 
       const data = await response.json();
-      console.log('Backend API response:', data);
-
       return data;
     } catch (error) {
       console.error('Backend API request failed:', error);
@@ -202,6 +200,22 @@ class BackendApiService {
       return response.data;
     } else {
       throw new Error('Failed to get food categories');
+    }
+  }
+
+  /**
+   * Get food image URL for a specific food
+   *
+   * @param {string} foodId - FatSecret food ID
+   * @returns {Promise<string|null>} Food image URL or null if not available
+   */
+  async getFoodImage(foodId) {
+    try {
+      const response = await this.makeRequest(`/api/foods/image/${foodId}`);
+      return response.image_url;
+    } catch (error) {
+      console.warn(`Failed to get image for food ${foodId}:`, error);
+      return null;
     }
   }
 
@@ -340,6 +354,7 @@ class BackendApiService {
       servingUnit: food.serving_unit || 'serving',
       verified: Boolean(food.verified),
       fatSecretId: food.fatsecret_id || null,
+      serving: food.serving || null, // Include the serving data with serving_id
     };
   }
 
