@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
 import { Alert } from 'react-native';
+import { api } from '../services';
 
 /**
  * RunContext - GPS Run Tracking State Management
@@ -30,6 +31,7 @@ export const RUN_STATES = {
 const initialState = {
   // Run session state
   status: RUN_STATES.IDLE,
+  sessionId: null, // Backend workout session ID
   startTime: null,
   endTime: null,
   pausedTime: 0, // Total time paused (for accurate duration)
@@ -65,6 +67,7 @@ const RUN_ACTIONS = {
 
   // Run session control
   START_RUN: 'START_RUN',
+  SET_SESSION_ID: 'SET_SESSION_ID',
   PAUSE_RUN: 'PAUSE_RUN',
   RESUME_RUN: 'RESUME_RUN',
   COMPLETE_RUN: 'COMPLETE_RUN',
@@ -118,6 +121,12 @@ function runReducer(state, action) {
         calories: 0,
         isTrackingLocation: true,
         error: null,
+      };
+
+    case RUN_ACTIONS.SET_SESSION_ID:
+      return {
+        ...state,
+        sessionId: action.payload,
       };
 
     case RUN_ACTIONS.PAUSE_RUN:
@@ -247,6 +256,8 @@ export const RunProvider = ({ children }) => {
   const metricsIntervalRef = useRef(null);
   const pauseStartTimeRef = useRef(null);
   const stateRef = useRef(state);
+  const pendingPointsRef = useRef([]); // GPS points waiting to be uploaded
+  const uploadIntervalRef = useRef(null); // Interval for uploading points
 
   // Initialize location permissions
   const requestLocationPermissions = async () => {
@@ -276,6 +287,54 @@ export const RunProvider = ({ children }) => {
     }
   };
 
+  // Upload GPS points to backend
+  const uploadPendingPoints = async () => {
+    const currentState = stateRef.current;
+    if (!currentState.sessionId || pendingPointsRef.current.length === 0) {
+      return;
+    }
+
+    try {
+      const pointsToUpload = [...pendingPointsRef.current];
+      pendingPointsRef.current = []; // Clear pending points
+
+      // Convert points to backend format
+      const formattedPoints = pointsToUpload.map(point => ({
+        lat: point.latitude,
+        lng: point.longitude,
+        t_ms: point.timestamp,
+      }));
+
+      await api.addWorkoutPoints(currentState.sessionId, formattedPoints);
+      console.log(`📍 Uploaded ${formattedPoints.length} GPS points to backend`);
+    } catch (error) {
+      console.error('❌ Failed to upload GPS points:', error);
+      // Re-add points to pending queue for retry
+      pendingPointsRef.current.unshift(...pointsToUpload);
+    }
+  };
+
+  // Start periodic GPS point upload
+  const startPointUpload = () => {
+    if (uploadIntervalRef.current) {
+      clearInterval(uploadIntervalRef.current);
+    }
+    
+    // Upload points every 10 seconds
+    uploadIntervalRef.current = setInterval(uploadPendingPoints, 10000);
+  };
+
+  // Stop periodic GPS point upload
+  const stopPointUpload = () => {
+    if (uploadIntervalRef.current) {
+      clearInterval(uploadIntervalRef.current);
+      uploadIntervalRef.current = null;
+    }
+    
+    // Upload any remaining points
+    uploadPendingPoints();
+  };
+
   // Start GPS tracking
   const startLocationTracking = async () => {
     if (state.locationPermission !== 'granted') {
@@ -286,13 +345,33 @@ export const RunProvider = ({ children }) => {
     try {
       locationSubscriptionRef.current = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 1000, // Update every second
-          distanceInterval: 5, // Update every 5 meters
+          accuracy: Location.Accuracy.Balanced, // Better battery life, still accurate
+          timeInterval: 5000, // Update every 5 seconds (better battery)
+          distanceInterval: 5, // Update every 5 meters (good balance)
+          mayShowUserSettingsDialog: true, // Ask user to enable high accuracy
         },
         (location) => {
-          const { latitude, longitude, timestamp } = location.coords;
+          const { latitude, longitude, accuracy, altitude, heading, speed } = location.coords;
+          const timestamp = location.timestamp || Date.now();
           const newPoint = { latitude, longitude, timestamp };
+
+          // Filter out inaccurate GPS points
+          if (accuracy && accuracy > 50) { // Skip points with >50m accuracy
+            console.log('⚠️ Skipping inaccurate GPS point:', accuracy.toFixed(1) + 'm');
+            return;
+          }
+
+          // Debug GPS data
+          console.log('📍 GPS Update:', {
+            latitude: latitude.toFixed(8),
+            longitude: longitude.toFixed(8),
+            accuracy: accuracy?.toFixed(1),
+            altitude: altitude?.toFixed(1),
+            heading: heading?.toFixed(1),
+            speed: speed?.toFixed(1),
+            timestamp: new Date(timestamp).toLocaleTimeString(),
+            timeSinceLastUpdate: timestamp - (pendingPointsRef.current[pendingPointsRef.current.length - 1]?.timestamp || timestamp)
+          });
 
           dispatch({
             type: RUN_ACTIONS.UPDATE_LOCATION,
@@ -303,6 +382,9 @@ export const RunProvider = ({ children }) => {
             type: RUN_ACTIONS.ADD_ROUTE_POINT,
             payload: newPoint,
           });
+
+          // Add point to pending upload queue
+          pendingPointsRef.current.push(newPoint);
         }
       );
     } catch (error) {
@@ -332,6 +414,16 @@ export const RunProvider = ({ children }) => {
         const currentPace = calculatePace(distance, activeTime);
         const calories = calculateCalories(distance, activeTime);
 
+        // Debug logging
+        console.log('📊 Metrics Update:', {
+          routePointsCount: currentState.routePoints.length,
+          distance: Math.round(distance),
+          activeTime: Math.round(activeTime),
+          currentPace: Math.round(currentPace * 100) / 100,
+          firstPoint: currentState.routePoints[0],
+          lastPoint: currentState.routePoints[currentState.routePoints.length - 1]
+        });
+
         dispatch({
           type: RUN_ACTIONS.UPDATE_METRICS,
           payload: {
@@ -360,15 +452,48 @@ export const RunProvider = ({ children }) => {
 
     // Run control
     startRun: async () => {
-      dispatch({ type: RUN_ACTIONS.START_RUN });
-      await startLocationTracking();
-      startMetricsTracking();
+      try {
+        dispatch({ type: RUN_ACTIONS.SET_LOADING, payload: true });
+        
+        // Start local tracking first (always works)
+        dispatch({ type: RUN_ACTIONS.START_RUN });
+        
+        // Start GPS tracking and metrics (works offline)
+        await startLocationTracking();
+        startMetricsTracking();
+        
+        // Try to create workout session in backend (optional)
+        // Note: This requires user authentication, so it's disabled for now
+        // TODO: Add authentication integration
+        try {
+          // For now, skip backend integration and run in offline mode
+          // const startTime = Date.now();
+          // const session = await api.startWorkout('run', startTime, userToken);
+          // dispatch({ type: RUN_ACTIONS.SET_SESSION_ID, payload: session.id });
+          // startPointUpload();
+          // console.log('✅ Workout session started with backend:', session.id);
+          
+          console.log('ℹ️ Running in offline mode - GPS tracking active');
+        } catch (backendError) {
+          console.warn('⚠️ Backend unavailable, running in offline mode:', backendError.message);
+        }
+        
+      } catch (error) {
+        console.error('❌ Failed to start workout session:', error);
+        dispatch({ 
+          type: RUN_ACTIONS.SET_ERROR, 
+          payload: 'Failed to start GPS tracking. Please check location permissions.' 
+        });
+      } finally {
+        dispatch({ type: RUN_ACTIONS.SET_LOADING, payload: false });
+      }
     },
 
     pauseRun: () => {
       pauseStartTimeRef.current = Date.now();
       dispatch({ type: RUN_ACTIONS.PAUSE_RUN });
       stopLocationTracking();
+      stopPointUpload(); // Stop uploading when paused
     },
 
     resumeRun: async () => {
@@ -377,17 +502,45 @@ export const RunProvider = ({ children }) => {
         payload: { pauseStartTime: pauseStartTimeRef.current },
       });
       await startLocationTracking();
+      startPointUpload(); // Resume uploading when resumed
     },
 
-    completeRun: () => {
-      dispatch({ type: RUN_ACTIONS.COMPLETE_RUN });
-      stopLocationTracking();
-      stopMetricsTracking();
+    completeRun: async () => {
+      try {
+        dispatch({ type: RUN_ACTIONS.SET_LOADING, payload: true });
+        
+        // Stop local tracking first (always works)
+        dispatch({ type: RUN_ACTIONS.COMPLETE_RUN });
+        stopLocationTracking();
+        stopMetricsTracking();
+        
+        // Try to finish workout session in backend (optional)
+        const currentState = stateRef.current;
+        if (currentState.sessionId) {
+          try {
+            stopPointUpload(); // Upload any remaining points
+            const endTime = Date.now();
+            const finalSession = await api.finishWorkout(currentState.sessionId, endTime);
+            console.log('✅ Workout session completed and saved to backend:', finalSession);
+          } catch (backendError) {
+            console.warn('⚠️ Failed to save to backend, but local workout completed:', backendError.message);
+          }
+        } else {
+          console.log('ℹ️ Workout completed in offline mode');
+        }
+      } catch (error) {
+        console.error('❌ Failed to complete workout session:', error);
+        // Local workout is still completed, just backend save failed
+      } finally {
+        dispatch({ type: RUN_ACTIONS.SET_LOADING, payload: false });
+      }
     },
 
     resetRun: () => {
       stopLocationTracking();
       stopMetricsTracking();
+      stopPointUpload();
+      pendingPointsRef.current = []; // Clear pending points
       dispatch({ type: RUN_ACTIONS.RESET_RUN });
     },
 
@@ -417,6 +570,7 @@ export const RunProvider = ({ children }) => {
     return () => {
       stopLocationTracking();
       stopMetricsTracking();
+      stopPointUpload();
     };
   }, []);
 

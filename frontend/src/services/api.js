@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 // Backend API Configuration
+<<<<<<< HEAD
 // For physical device testing, use your computer's local IP address
 const getBackendUrl = () => {
   if (__DEV__) {
@@ -66,6 +67,12 @@ const getBackendUrl = () => {
 
 const BACKEND_BASE_URL = getBackendUrl();
 console.log('Backend URL:', BACKEND_BASE_URL);
+=======
+// 在移动设备上测试时，即使在开发模式也使用生产API
+const BACKEND_BASE_URL = __DEV__
+  ? 'https://comp90018-t8-g2.web.app'  // Development: Use production API for mobile testing
+  : 'https://comp90018-t8-g2.web.app';  // Production: Firebase Hosting with reverse proxy
+>>>>>>> origin/test
 
 class BackendApiService {
   constructor() {
@@ -82,20 +89,40 @@ class BackendApiService {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         ...options.headers,
       },
+      // 增加超时和重试配置
+      timeout: 15000,
     };
 
     const requestOptions = { ...defaultOptions, ...options };
 
     try {
       console.log('Backend API request:', url);
+<<<<<<< HEAD
       console.log('Base URL:', this.baseUrl);
+=======
+      console.log('Request options:', JSON.stringify(requestOptions, null, 2));
+>>>>>>> origin/test
 
-      const response = await fetch(url, requestOptions);
+      // 创建带超时的fetch请求
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
+      const response = await fetch(url, {
+        ...requestOptions,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('Backend API error response:', errorText);
         throw new Error(`Backend API error ${response.status}: ${errorText}`);
       }
 
@@ -105,7 +132,36 @@ class BackendApiService {
       return data;
     } catch (error) {
       console.error('Backend API request failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        url: url,
+      });
+      
+      // 提供更详细的错误信息
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - please check your internet connection');
+      } else if (error.message.includes('Network request failed')) {
+        throw new Error('Network connection failed - please check your internet connection and try again');
+      }
+      
       throw error;
+    }
+  }
+
+  /**
+   * Test network connectivity
+   */
+  async testConnection() {
+    try {
+      console.log('Testing backend connection...');
+      const response = await this.makeRequest('/api/health');
+      console.log('Connection test successful:', response);
+      return { success: true, data: response };
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      return { success: false, error: error.message };
     }
   }
 
@@ -128,7 +184,7 @@ class BackendApiService {
       limit: limit.toString(),
     });
 
-    const response = await this.makeRequest(`/foods/search?${params}`);
+    const response = await this.makeRequest(`/api/foods/search?${params}`);
 
     if (response.success) {
       return this.transformSearchResponse(response);
@@ -137,6 +193,23 @@ class BackendApiService {
     }
   }
 
+<<<<<<< HEAD
+=======
+  /**
+   * Search for food by barcode
+   *
+   * @param {string} barcode - Barcode to search for
+   * @returns {Promise<Object>} Search result with food information
+   */
+  async searchFoodByBarcode(barcode) {
+    if (!barcode || barcode.trim().length < 8) {
+      throw new Error('Invalid barcode format');
+    }
+
+    const response = await this.makeRequest(`/api/foods/barcode/${barcode.trim()}`);
+    return response;
+  }
+>>>>>>> origin/test
 
   /**
    * Get detailed food information
@@ -160,7 +233,7 @@ class BackendApiService {
    * @returns {Promise<Array>} List of food categories
    */
   async getFoodCategories() {
-    const response = await this.makeRequest('/foods/categories');
+    const response = await this.makeRequest('/api/foods/categories');
 
     if (response.success) {
       return response.data;
@@ -175,7 +248,7 @@ class BackendApiService {
    * @returns {Promise<Object>} Health status
    */
   async healthCheck() {
-    return await this.makeRequest('/foods/health');
+    return await this.makeRequest('/api/foods/health');
   }
 
   /**
@@ -189,7 +262,7 @@ class BackendApiService {
    * @returns {Promise<Object>} Login response with token
    */
   async login(email, password) {
-    return await this.makeRequest('/auth/login', {
+    return await this.makeRequest('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -203,7 +276,7 @@ class BackendApiService {
    * @returns {Promise<Object>} Registration response with token
    */
   async register(email, password, displayName) {
-    return await this.makeRequest('/auth/register', {
+    return await this.makeRequest('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password, display_name: displayName }),
     });
@@ -215,7 +288,7 @@ class BackendApiService {
    * @returns {Promise<Object>} User information
    */
   async me(token) {
-    return await this.makeRequest('/auth/me', {
+    return await this.makeRequest('/api/auth/me', {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -232,8 +305,12 @@ class BackendApiService {
       throw new Error('Invalid barcode format');
     }
 
+<<<<<<< HEAD
     try {
       const response = await this.makeRequest(`/foods/barcode/${barcode.trim()}`);
+=======
+    const response = await this.makeRequest(`/api/foods/barcode/${barcode.trim()}`);
+>>>>>>> origin/test
 
       // Handle successful response with food data
       if (response && response.success && response.food) {
@@ -305,6 +382,94 @@ class BackendApiService {
       verified: Boolean(food.verified),
       fatSecretId: food.fatsecret_id || null,
     };
+  }
+
+  // ============ WORKOUT API METHODS ============
+
+  /**
+   * Start a new workout session
+   * @param {string} workoutType - Type of workout (e.g., 'run')
+   * @param {number} startTimeMs - Start timestamp in milliseconds
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Workout session response
+   */
+  async startWorkout(workoutType = 'run', startTimeMs = Date.now(), token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return await this.makeRequest('/api/workouts/start', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        workout_type: workoutType,
+        start_time_ms: startTimeMs,
+      }),
+    });
+  }
+
+  /**
+   * Add GPS points to an active workout session
+   * @param {string} sessionId - Workout session ID
+   * @param {Array} points - Array of GPS points with lat, lng, t_ms
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Response with added points count
+   */
+  async addWorkoutPoints(sessionId, points, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return await this.makeRequest('/api/workouts/add-points', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        session_id: sessionId,
+        points: points,
+      }),
+    });
+  }
+
+  /**
+   * Finish a workout session
+   * @param {string} sessionId - Workout session ID
+   * @param {number} endTimeMs - End timestamp in milliseconds
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Final workout session data
+   */
+  async finishWorkout(sessionId, endTimeMs = Date.now(), token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return await this.makeRequest('/api/workouts/finish', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        session_id: sessionId,
+        end_time_ms: endTimeMs,
+      }),
+    });
+  }
+
+  /**
+   * Get all workout sessions for the current user
+   * @returns {Promise<Array>} List of workout sessions
+   */
+  async getWorkouts() {
+    return await this.makeRequest('/api/workouts/');
+  }
+
+  /**
+   * Get a specific workout session by ID
+   * @param {string} sessionId - Workout session ID
+   * @returns {Promise<Object>} Workout session details
+   */
+  async getWorkout(sessionId) {
+    return await this.makeRequest(`/api/workouts/${sessionId}`);
   }
 }
 

@@ -22,7 +22,10 @@ class FatSecretService:
         self.token_url = "https://oauth.fatsecret.com/connect/token"
 
         if not self.client_id or not self.client_secret:
-            raise ValueError("FatSecret API credentials not configured")
+            print("Warning: FatSecret API credentials not configured. Food search will be unavailable.")
+            self.enabled = False
+        else:
+            self.enabled = True
 
     async def _authenticate(self) -> str:
         """Obtain OAuth 2.0 access token"""
@@ -94,6 +97,12 @@ class FatSecretService:
         Returns:
             Dictionary containing search results and metadata
         """
+        if not self.enabled:
+            return {
+                "foods": {"food": []},
+                "error": "FatSecret API not configured"
+            }
+            
         if not query or len(query.strip()) < 2:
             return {"foods": [], "total_results": 0, "page_number": 0}
 
