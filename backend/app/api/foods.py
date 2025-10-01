@@ -66,19 +66,16 @@ async def search_food_by_barcode(barcode: str):
     try:
         result = await fatsecret_service.search_food_by_barcode(barcode)
 
-        if result.get("food_id"):
-            return {
-                "success": True,
-                "food_id": result["food_id"],
-                "food": result["food"],
-                "barcode": barcode
-            }
-        else:
+        # Handle case where result might be None
+        if result is None:
             return {
                 "success": False,
-                "error": result.get("error", "Barcode not found"),
+                "error": "Barcode search returned no result",
                 "barcode": barcode
             }
+
+        # The result already contains all the needed fields from the service
+        return result
 
     except Exception as e:
         raise HTTPException(
