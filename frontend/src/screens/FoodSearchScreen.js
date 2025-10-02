@@ -255,10 +255,10 @@ export default function FoodSearchScreen({ navigation, route }) {
     };
   };
 
-  const handleAddFoodToMeal = () => {
+  const handleAddFoodToMeal = async () => {
     const amount = parseFloat(servingAmount) || 1;
     const nutrition = calculateNutrition();
-    
+
     const foodToAdd = {
       ...selectedFood,
       servingAmount: amount,
@@ -267,10 +267,29 @@ export default function FoodSearchScreen({ navigation, route }) {
       ...nutrition,
     };
 
-    setShowFoodDetail(false);
-    navigation.goBack();
-    
-    // TODO: Add the selected food to the meal
+    try {
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+
+      // Log the meal to backend
+      const response = await api.logMeal(mealType, today, foodToAdd);
+
+      if (response.success) {
+        console.log('✅ Meal logged successfully:', response.data);
+        setShowFoodDetail(false);
+
+        // Navigate back with success flag to trigger refresh
+        navigation.navigate('Home', {
+          screen: 'FoodTab',
+          params: { mealLogged: true, timestamp: Date.now() }
+        });
+      } else {
+        Alert.alert('Error', 'Failed to log meal. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to log meal:', error);
+      Alert.alert('Error', `Failed to save meal: ${error.message}`);
+    }
   };
 
   const renderFoodItem = ({ item }) => {

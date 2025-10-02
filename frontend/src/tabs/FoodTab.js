@@ -10,10 +10,12 @@ import {
   TextInput,
   Alert,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { colors, spacing, typography, globalStyles } from '../theme';
+import { api } from '../services';
 
 /**
  * FoodTab Component - Enhanced Food Log Screen
@@ -37,7 +39,14 @@ import { colors, spacing, typography, globalStyles } from '../theme';
  */
 export default function FoodTab({ navigation, route }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const [meals, setMeals] = useState({
+    breakfast: [],
+    lunch: [],
+    dinner: [],
+    snacks: [],
+  });
+
   // Generate dates for the calendar slider (7 days: 3 previous, today, 3 future)
   const generateCalendarDates = () => {
     const dates = [];
@@ -49,15 +58,9 @@ export default function FoodTab({ navigation, route }) {
     }
     return dates;
   };
-  
+
   const calendarDates = generateCalendarDates();
 
-  const [meals, setMeals] = useState({
-    breakfast: [],
-    lunch: [],
-    dinner: [],
-    snacks: [],
-  });
   const [addMealModalVisible, setAddMealModalVisible] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState('breakfast');
   const [foodName, setFoodName] = useState('');
@@ -85,10 +88,10 @@ export default function FoodTab({ navigation, route }) {
 
     return allFoods.reduce(
       (totals, food) => ({
-        calories: totals.calories + (food.calories || 0),
-        protein: totals.protein + (food.protein || 0),
-        carbs: totals.carbs + (food.carbs || 0),
-        fat: totals.fat + (food.fat || 0),
+        calories: totals.calories + (food.food?.calories || food.calories || 0),
+        protein: totals.protein + (food.food?.protein || food.protein || 0),
+        carbs: totals.carbs + (food.food?.carbs || food.carbs || 0),
+        fat: totals.fat + (food.food?.fat || food.fat || 0),
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );
@@ -96,35 +99,47 @@ export default function FoodTab({ navigation, route }) {
 
   const dailyTotals = calculateDailyTotals();
 
-  // Handle food selection result from FoodSearchScreen
+  // Fetch meals from backend
+  const fetchMeals = async (date) => {
+    try {
+      setIsLoading(true);
+      const dateStr = date.toISOString().split('T')[0];
+      const response = await api.getDailyMeals(dateStr);
+
+      if (response) {
+        // Transform backend response to match frontend format
+        setMeals({
+          breakfast: response.meals?.breakfast || [],
+          lunch: response.meals?.lunch || [],
+          dinner: response.meals?.dinner || [],
+          snacks: response.meals?.snacks || [],
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch meals:', error);
+      // Don't show alert on fetch error, just use empty meals
+      setMeals({ breakfast: [], lunch: [], dinner: [], snacks: [] });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load meals when date changes
+  useEffect(() => {
+    fetchMeals(selectedDate);
+  }, [selectedDate]);
+
+  // Reload meals when returning from food search
   useFocusEffect(
     React.useCallback(() => {
-      if (route.params?.selectedFood && route.params?.mealType) {
-        const { selectedFood, mealType } = route.params;
-        handleFoodSelected(selectedFood, mealType);
-        navigation.setParams({ selectedFood: undefined, mealType: undefined });
+      if (route.params?.mealLogged) {
+        fetchMeals(selectedDate);
+        // Clear the param
+        navigation.setParams({ mealLogged: undefined });
       }
-    }, [route.params?.selectedFood, route.params?.mealType])
+    }, [route.params?.mealLogged, selectedDate])
   );
 
-  // Handle food selection from search screen
-  const handleFoodSelected = (foodData, mealType) => {
-    const newFood = {
-      id: Date.now().toString(),
-      name: foodData.name,
-      brand: foodData.brand,
-      calories: foodData.calories,
-      protein: foodData.protein,
-      carbs: foodData.carbs,
-      fat: foodData.fat,
-      servingSize: foodData.servingSize,
-    };
-
-    setMeals(prev => ({
-      ...prev,
-      [mealType]: [...prev[mealType], newFood],
-    }));
-  };
 
   // Navigate to food search screen
   const openFoodSearch = (mealType) => {
@@ -278,7 +293,10 @@ export default function FoodTab({ navigation, route }) {
 
   // D. Meal Section Component - Enhanced layout with prominent Add Food button
   const MealSection = ({ mealType, foods, icon }) => {
-    const mealCalories = foods.reduce((sum, food) => sum + food.calories, 0);
+    const mealCalories = foods.reduce((sum, food) => {
+      const cal = food.food?.calories || food.calories || 0;
+      return sum + cal;
+    }, 0);
 
     return (
       <View style={globalStyles.card}>
@@ -290,25 +308,30 @@ export default function FoodTab({ navigation, route }) {
               {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
             </Text>
           </View>
-          <Text style={styles.mealCalories}>{mealCalories} kcal</Text>
+          <Text style={styles.mealCalories}>{Math.round(mealCalories)} kcal</Text>
         </View>
 
         {/* Food Items List */}
         {foods.length > 0 ? (
           <View style={styles.foodList}>
-            {foods.map((food) => (
-              <View key={food.id} style={styles.foodItem}>
-                <View style={styles.foodItemInfo}>
-                  <Text style={globalStyles.bodyText}>
-                    {food.brand ? `${food.name} (${food.brand})` : food.name}
-                  </Text>
-                  {food.servingSize && (
-                    <Text style={globalStyles.captionText}>{food.servingSize}</Text>
-                  )}
+            {foods.map((item) => {
+              const food = item.food || item;
+              return (
+                <View key={item.id} style={styles.foodItem}>
+                  <View style={styles.foodItemInfo}>
+                    <Text style={globalStyles.bodyText}>
+                      {food.brand ? `${food.name} (${food.brand})` : food.name}
+                    </Text>
+                    {food.serving_amount && (
+                      <Text style={globalStyles.captionText}>
+                        {food.serving_amount}{food.serving_unit || 'g'}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={globalStyles.secondaryText}>{Math.round(food.calories)} cal</Text>
                 </View>
-                <Text style={globalStyles.secondaryText}>{food.calories} cal</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
         ) : (
           <View style={styles.emptyMealContainer}>
@@ -397,7 +420,7 @@ export default function FoodTab({ navigation, route }) {
     );
   };
 
-  const MealCard = ({ title, calories = 0, onPress }) => (
+  const MealCard = ({ title, calories = 0, foods = [], onPress }) => (
     <View style={styles.mealCard}>
       <View style={styles.mealCardHeader}>
         <Text style={styles.mealCardTitle}>{title}</Text>
@@ -408,10 +431,29 @@ export default function FoodTab({ navigation, route }) {
           <Ionicons name="add" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
-      <View style={styles.mealCardContent}>
-        <Text style={styles.mealCardEmpty}>No food logged</Text>
-        <Text style={styles.mealCardCalories}>{calories} kcal</Text>
-      </View>
+      {foods.length > 0 ? (
+        <View style={styles.mealCardContent}>
+          {foods.map((item, index) => {
+            const food = item.food || item;
+            return (
+              <View key={item.id || index} style={styles.mealFoodItem}>
+                <Text style={styles.mealFoodName} numberOfLines={1}>
+                  {food.name}
+                </Text>
+                <Text style={styles.mealFoodCalories}>
+                  {Math.round(food.calories)} cal
+                </Text>
+              </View>
+            );
+          })}
+          <Text style={styles.mealCardCalories}>{Math.round(calories)} kcal total</Text>
+        </View>
+      ) : (
+        <View style={styles.mealCardContent}>
+          <Text style={styles.mealCardEmpty}>No food logged</Text>
+          <Text style={styles.mealCardCalories}>{calories} kcal</Text>
+        </View>
+      )}
     </View>
   );
 
@@ -475,24 +517,46 @@ export default function FoodTab({ navigation, route }) {
         </View>
       </View>
 
+      {/* Loading Indicator */}
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.textPrimary} />
+          <Text style={styles.loadingText}>Loading meals...</Text>
+        </View>
+      )}
+
       {/* Meal Sections */}
-      <View style={styles.mealSections}>
-        <MealCard
-          title="Breakfast"
-          calories={meals.breakfast.reduce((sum, food) => sum + food.calories, 0)}
-          onPress={() => openFoodSearch('breakfast')}
-        />
-        <MealCard
-          title="Lunch"
-          calories={meals.lunch.reduce((sum, food) => sum + food.calories, 0)}
-          onPress={() => openFoodSearch('lunch')}
-        />
-        <MealCard
-          title="Dinner"
-          calories={meals.dinner.reduce((sum, food) => sum + food.calories, 0)}
-          onPress={() => openFoodSearch('dinner')}
-        />
-      </View>
+      {!isLoading && (
+        <View style={styles.mealSections}>
+          <MealCard
+            title="Breakfast"
+            foods={meals.breakfast}
+            calories={meals.breakfast.reduce((sum, item) => {
+              const food = item.food || item;
+              return sum + (food.calories || 0);
+            }, 0)}
+            onPress={() => openFoodSearch('breakfast')}
+          />
+          <MealCard
+            title="Lunch"
+            foods={meals.lunch}
+            calories={meals.lunch.reduce((sum, item) => {
+              const food = item.food || item;
+              return sum + (food.calories || 0);
+            }, 0)}
+            onPress={() => openFoodSearch('lunch')}
+          />
+          <MealCard
+            title="Dinner"
+            foods={meals.dinner}
+            calories={meals.dinner.reduce((sum, item) => {
+              const food = item.food || item;
+              return sum + (food.calories || 0);
+            }, 0)}
+            onPress={() => openFoodSearch('dinner')}
+          />
+        </View>
+      )}
 
       {/* Add Meal Modal */}
       <Modal
@@ -801,5 +865,43 @@ const styles = StyleSheet.create({
   macroInput: {
     flex: 1,
     marginHorizontal: spacing.xs,
+  },
+
+  // Loading Indicator
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+
+  loadingText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
+
+  // Meal Food Items
+  mealFoodItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
+  },
+
+  mealFoodName: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textPrimary,
+    marginRight: spacing.sm,
+  },
+
+  mealFoodCalories: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
   },
 });

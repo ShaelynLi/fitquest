@@ -6,3 +6,4 @@
 
 export * from './AuthContext';
 export * from './RunContext';
+export * from './GamificationContext';

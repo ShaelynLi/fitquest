@@ -123,7 +123,7 @@ const PetScreen = ({ pet, onPlay, statusMeters = {}, navigation }) => {
   // Handle collection button press
   const handleCollectionPress = () => {
     if (navigation) {
-      navigation.navigate('Pokedex');
+      navigation.navigate('PetCollection');
     }
   };
 

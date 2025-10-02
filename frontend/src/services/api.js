@@ -445,6 +445,85 @@ class BackendApiService {
   async getWorkout(sessionId) {
     return await this.makeRequest(`/api/workouts/${sessionId}`);
   }
+
+  // ============ MEALS API METHODS ============
+
+  /**
+   * Log a meal/food item
+   * @param {string} mealType - Meal type (breakfast, lunch, dinner, snacks)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Object} foodData - Food item data with nutrition info
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Logged meal entry
+   */
+  async logMeal(mealType, date, foodData, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest('/api/meals/log', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        meal_type: mealType,
+        date: date,
+        food: {
+          name: foodData.name,
+          brand: foodData.brand || null,
+          fatsecret_id: foodData.fatsecret_id || null,
+          calories: foodData.calories || 0,
+          protein: foodData.protein || 0,
+          carbs: foodData.carbs || 0,
+          fat: foodData.fat || 0,
+          fiber: foodData.fiber || 0,
+          sugar: foodData.sugar || 0,
+          saturated_fat: foodData.saturated_fat || 0,
+          sodium: foodData.sodium || 0,
+          cholesterol: foodData.cholesterol || 0,
+          potassium: foodData.potassium || 0,
+          serving_amount: foodData.servingAmount || 100,
+          serving_unit: foodData.measurementMode === 'gram' ? 'g' : 'serving',
+          measurement_mode: foodData.measurementMode || 'gram',
+        },
+      }),
+    });
+  }
+
+  /**
+   * Get all meals for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Daily nutrition summary with meals
+   */
+  async getDailyMeals(date, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/daily/${date}`, {
+      headers,
+    });
+  }
+
+  /**
+   * Delete a logged meal
+   * @param {string} mealId - Meal entry ID
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Success confirmation
+   */
+  async deleteMeal(mealId, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/${mealId}`, {
+      method: 'DELETE',
+      headers,
+    });
+  }
 }
 
 // Create singleton instance

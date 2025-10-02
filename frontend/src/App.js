@@ -12,8 +12,6 @@ import HomeScreen from './screens/HomeScreen';
 import RunTab from './tabs/RunTab';
 import PlusScreen from './screens/PlusScreen';
 import HistoryScreen from './screens/HistoryScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import PokedexScreen from './screens/PokedexScreen';
 import PetCollectionScreen from './screens/PetCollectionScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
 import FoodTab from './tabs/FoodTab';
@@ -146,10 +144,8 @@ function RootNavigator() {
       {BYPASS_AUTH || user ? (
         <>
           <Stack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
-          <Stack.Screen name="Pokedex" component={PokedexScreen} options={{ headerShown: false }} />
           <Stack.Screen name="PetCollection" component={PetCollectionScreen} options={{ headerShown: false }} />
           <Stack.Screen name="FoodSearch" component={FoodSearchScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         </>
       ) : (
         <>
