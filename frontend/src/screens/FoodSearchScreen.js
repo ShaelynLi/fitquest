@@ -17,6 +17,7 @@ import { colors, spacing, typography, globalStyles } from '../theme';
 import { api } from '../services';
 import { BarcodeScanner } from '../components';
 import { searchMockFoods, getMockCategories } from '../utils/mockData';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * FoodSearchScreen Component - Food Database Search & Selection
@@ -45,7 +46,8 @@ import { searchMockFoods, getMockCategories } from '../utils/mockData';
  * - Favorite foods
  */
 export default function FoodSearchScreen({ navigation, route }) {
-  const { mealType = 'breakfast' } = route?.params || {};
+  const { mealType = 'breakfast', showBarcodeScanner: initialShowScanner = false } = route?.params || {};
+  const { token } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -53,7 +55,7 @@ export default function FoodSearchScreen({ navigation, route }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
-  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(initialShowScanner);
   
   // Food detail modal state
   const [selectedFood, setSelectedFood] = useState(null);
@@ -175,22 +177,49 @@ export default function FoodSearchScreen({ navigation, route }) {
     setShowFoodDetail(true);
   };
 
-  const handleAddFoodToMeal = () => {
-    const amount = parseFloat(servingAmount) || 1;
-    const foodToAdd = {
-      ...selectedFood,
-      servingAmount: amount,
-      totalCalories: Math.round(selectedFood.calories * amount),
-      totalProtein: Math.round(selectedFood.protein * amount * 10) / 10,
-      totalCarbs: Math.round(selectedFood.carbs * amount * 10) / 10,
-      totalFat: Math.round(selectedFood.fat * amount * 10) / 10,
-    };
+  const handleAddFoodToMeal = async () => {
+    if (!token) {
+      Alert.alert('Error', 'Please log in to save food logs.');
+      return;
+    }
 
-    setShowFoodDetail(false);
-    navigation.goBack();
-    
-    // TODO: Add the selected food to the meal
-    console.log('Adding food to meal:', foodToAdd, 'for meal type:', mealType);
+    try {
+      const amount = parseFloat(servingAmount) || 1;
+      const foodToAdd = {
+        ...selectedFood,
+        servingAmount: amount,
+        totalCalories: Math.round(selectedFood.calories * amount),
+        totalProtein: Math.round(selectedFood.protein * amount * 10) / 10,
+        totalCarbs: Math.round(selectedFood.carbs * amount * 10) / 10,
+        totalFat: Math.round(selectedFood.fat * amount * 10) / 10,
+      };
+
+      console.log('🍎 Saving food to Firebase:', foodToAdd);
+      
+      const foodLogData = {
+        name: selectedFood.name,
+        brand: selectedFood.brand || '',
+        calories: foodToAdd.totalCalories,
+        protein: foodToAdd.totalProtein,
+        carbs: foodToAdd.totalCarbs,
+        fat: foodToAdd.totalFat,
+        servingSize: `${amount} ${selectedFood.servingSize || 'serving'}`,
+        mealType: mealType,
+        date: new Date().toISOString().split('T')[0]
+      };
+
+      const response = await api.logFood(foodLogData, token);
+      console.log('✅ Food saved to Firebase:', response);
+
+      if (response.success) {
+        setShowFoodDetail(false);
+        navigation.goBack();
+        Alert.alert('Success', 'Food logged successfully!');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save food:', error);
+      Alert.alert('Error', 'Failed to save food. Please try again.');
+    }
   };
 
   const renderFoodItem = ({ item }) => (

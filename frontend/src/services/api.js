@@ -492,6 +492,92 @@ class BackendApiService {
       body: JSON.stringify(profileData),
     });
   }
+
+  // ============ FOOD LOGGING API METHODS ============
+
+  /**
+   * Log a food item for the current user
+   * @param {Object} foodData - Food data to log
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Log response
+   */
+  async logFood(foodData, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest('/api/foods/log', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(foodData),
+    });
+  }
+
+  /**
+   * Get food logs for the current user
+   * @param {string} targetDate - Optional date filter (YYYY-MM-DD)
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Food logs response
+   */
+  async getFoodLogs(targetDate = null, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const url = targetDate 
+      ? `/api/foods/logs?target_date=${targetDate}`
+      : '/api/foods/logs';
+
+    return await this.makeRequest(url, {
+      method: 'GET',
+      headers,
+    });
+  }
+
+  /**
+   * Delete a food log entry
+   * @param {string} logId - Food log ID to delete
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Delete response
+   */
+  async deleteFoodLog(logId, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/foods/logs/${logId}`, {
+      method: 'DELETE',
+      headers,
+    });
+  }
+
+  /**
+   * Get nutrition summary for a date range
+   * @param {string} startDate - Start date (YYYY-MM-DD)
+   * @param {string} endDate - End date (YYYY-MM-DD)
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Nutrition summary
+   */
+  async getNutritionSummary(startDate = null, endDate = null, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    let url = '/api/foods/nutrition-summary';
+    const params = [];
+    if (startDate) params.push(`start_date=${startDate}`);
+    if (endDate) params.push(`end_date=${endDate}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
+
+    return await this.makeRequest(url, {
+      method: 'GET',
+      headers,
+    });
+  }
 }
 
 // Create singleton instance

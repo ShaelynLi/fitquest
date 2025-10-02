@@ -14,6 +14,99 @@ def _session_doc(uid: str, sid: str):
 def _sessions_col(uid: str):
     return db.collection("users").document(uid).collection("workout_sessions")
 
+# Test endpoint to check Firebase connection
+@router.get("/test-firebase")
+def test_firebase_connection():
+    """Test Firebase Firestore connection for workout data"""
+    try:
+        print("🧪 Testing Firebase connection...")
+        # Try to write a test document
+        test_doc = db.collection("test").document("workout_test")
+        test_doc.set({
+            "test": True,
+            "timestamp": "test",
+            "message": "Firebase connection test successful"
+        })
+        print("✅ Firebase test write successful")
+        
+        # Try to read it back
+        doc = test_doc.get()
+        if doc.exists:
+            print("✅ Firebase test read successful")
+            data = doc.to_dict()
+            print(f"📄 Test data: {data}")
+            
+            # Clean up test document
+            test_doc.delete()
+            print("🧹 Test document cleaned up")
+            
+            return {
+                "status": "success",
+                "message": "Firebase connection working",
+                "test_data": data
+            }
+        else:
+            print("❌ Firebase test read failed")
+            return {"status": "error", "message": "Firebase read failed"}
+            
+    except Exception as e:
+        print(f"❌ Firebase test failed: {e}")
+        return {"status": "error", "message": f"Firebase connection failed: {e}"}
+
+# Test endpoint to check authentication
+@router.get("/test-auth")
+def test_authentication(user=Depends(get_current_user)):
+    """Test authentication for workout endpoints"""
+    try:
+        print(f"🔐 Testing authentication for user: {user['uid']}")
+        return {
+            "status": "success",
+            "message": "Authentication working",
+            "user_id": user["uid"],
+            "user_email": user.get("email", "unknown")
+        }
+    except Exception as e:
+        print(f"❌ Authentication test failed: {e}")
+        return {"status": "error", "message": f"Authentication failed: {e}"}
+
+# Test endpoint to list user's workout sessions
+@router.get("/test-list-workouts")
+def test_list_workouts(user=Depends(get_current_user)):
+    """Test listing workout sessions for debugging"""
+    try:
+        print(f"🔍 Listing workouts for user: {user['uid']}")
+        
+        # Query workout sessions
+        sessions = _sessions_col(user["uid"]).stream()
+        workout_list = []
+        
+        for doc in sessions:
+            data = doc.to_dict() or {}
+            workout_list.append({
+                "id": doc.id,
+                "workout_type": data.get("workout_type"),
+                "status": data.get("status"),
+                "start_time_ms": data.get("start_time_ms"),
+                "end_time_ms": data.get("end_time_ms"),
+                "distance_m": data.get("distance_m"),
+                "duration_s": data.get("duration_s"),
+                "points_count": data.get("points_count")
+            })
+        
+        print(f"📊 Found {len(workout_list)} workout sessions")
+        for workout in workout_list:
+            print(f"  - {workout['id']}: {workout['workout_type']} ({workout['status']})")
+        
+        return {
+            "status": "success",
+            "user_id": user["uid"],
+            "workout_count": len(workout_list),
+            "workouts": workout_list
+        }
+    except Exception as e:
+        print(f"❌ Failed to list workouts: {e}")
+        return {"status": "error", "message": f"Failed to list workouts: {e}"}
+
 # calculate distance (meters) between two GPS points using haversine formula
 def _haversine_m(lat1, lng1, lat2, lng2):
     R = 6371000.0
@@ -27,8 +120,11 @@ def _haversine_m(lat1, lng1, lat2, lng2):
 @router.post("/start", response_model=WorkoutSessionResponse)
 def start_workout(req: WorkoutStartRequest, user=Depends(get_current_user)):
     try:
+        print(f"🏃 Starting workout for user: {user['uid']}")
+        print(f"📊 Workout type: {req.workout_type}, start time: {req.start_time_ms}")
+        
         doc_ref = _sessions_col(user["uid"]).document()
-        doc_ref.set({
+        workout_data = {
             "workout_type": req.workout_type,
             "start_time_ms": req.start_time_ms,
             "status": "active",
@@ -36,7 +132,12 @@ def start_workout(req: WorkoutStartRequest, user=Depends(get_current_user)):
             "duration_s": 0.0,
             "pace_min_per_km": None,
             "points_count": 0,
-        })
+        }
+        
+        print(f"💾 Saving workout data to Firebase: {workout_data}")
+        doc_ref.set(workout_data)
+        print(f"✅ Workout session created with ID: {doc_ref.id}")
+        
         # Store GPS points in subcollection to avoid large single documents
         return WorkoutSessionResponse(
             id=doc_ref.id,
@@ -49,6 +150,7 @@ def start_workout(req: WorkoutStartRequest, user=Depends(get_current_user)):
             points_count=0,
         )
     except Exception as e:
+        print(f"❌ Failed to start workout: {e}")
         raise HTTPException(500, f"Failed to start workout: {e}")
 
 # Add GPS points to an existing workout session

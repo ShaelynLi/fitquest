@@ -14,6 +14,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { colors, spacing, typography, globalStyles } from '../theme';
+import { api } from '../services';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * FoodTab Component - Enhanced Food Log Screen
@@ -36,7 +38,9 @@ import { colors, spacing, typography, globalStyles } from '../theme';
  * D. Meal logging cards with improved layout
  */
 export default function FoodTab({ navigation, route }) {
+  const { token } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isLoading, setIsLoading] = useState(false);
   
   // Generate dates for the calendar slider (7 days: 3 previous, today, 3 future)
   const generateCalendarDates = () => {
@@ -96,6 +100,11 @@ export default function FoodTab({ navigation, route }) {
 
   const dailyTotals = calculateDailyTotals();
 
+  // Load food logs when date changes
+  useEffect(() => {
+    loadFoodLogs();
+  }, [selectedDate, token]);
+
   // Handle food selection result from FoodSearchScreen
   useFocusEffect(
     React.useCallback(() => {
@@ -107,23 +116,79 @@ export default function FoodTab({ navigation, route }) {
     }, [route.params?.selectedFood, route.params?.mealType])
   );
 
-  // Handle food selection from search screen
-  const handleFoodSelected = (foodData, mealType) => {
-    const newFood = {
-      id: Date.now().toString(),
-      name: foodData.name,
-      brand: foodData.brand,
-      calories: foodData.calories,
-      protein: foodData.protein,
-      carbs: foodData.carbs,
-      fat: foodData.fat,
-      servingSize: foodData.servingSize,
-    };
+  // Load food logs from Firebase
+  const loadFoodLogs = async () => {
+    if (!token) return;
+    
+    try {
+      setIsLoading(true);
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      console.log('🍎 Loading food logs for date:', dateStr);
+      
+      const response = await api.getFoodLogs(dateStr, token);
+      console.log('📊 Food logs response:', response);
+      
+      if (response.success) {
+        setMeals(response.meals);
+        console.log('✅ Food logs loaded successfully');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load food logs:', error);
+      Alert.alert('Error', 'Failed to load food logs. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    setMeals(prev => ({
-      ...prev,
-      [mealType]: [...prev[mealType], newFood],
-    }));
+  // Handle food selection from search screen
+  const handleFoodSelected = async (foodData, mealType) => {
+    if (!token) {
+      Alert.alert('Error', 'Please log in to save food logs.');
+      return;
+    }
+
+    try {
+      console.log('🍎 Saving food to Firebase:', foodData);
+      
+      const foodLogData = {
+        name: foodData.name,
+        brand: foodData.brand || '',
+        calories: foodData.calories || 0,
+        protein: foodData.protein || 0,
+        carbs: foodData.carbs || 0,
+        fat: foodData.fat || 0,
+        servingSize: foodData.servingSize || '1 serving',
+        mealType: mealType,
+        date: selectedDate.toISOString().split('T')[0]
+      };
+
+      const response = await api.logFood(foodLogData, token);
+      console.log('✅ Food saved to Firebase:', response);
+
+      if (response.success) {
+        // Update local state
+        const newFood = {
+          id: response.food_log_id,
+          name: foodData.name,
+          brand: foodData.brand,
+          calories: foodData.calories,
+          protein: foodData.protein,
+          carbs: foodData.carbs,
+          fat: foodData.fat,
+          servingSize: foodData.servingSize,
+        };
+
+        setMeals(prev => ({
+          ...prev,
+          [mealType]: [...prev[mealType], newFood],
+        }));
+
+        Alert.alert('Success', 'Food logged successfully!');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save food:', error);
+      Alert.alert('Error', 'Failed to save food. Please try again.');
+    }
   };
 
   // Navigate to food search screen
@@ -134,33 +199,63 @@ export default function FoodTab({ navigation, route }) {
   };
 
   // Manual entry function
-  const addMeal = () => {
+  const addMeal = async () => {
     if (!foodName.trim() || !calories) {
       Alert.alert('Error', 'Please enter food name and calories');
       return;
     }
 
-    const newFood = {
-      id: Date.now().toString(),
-      name: foodName.trim(),
-      calories: parseInt(calories) || 0,
-      protein: parseInt(protein) || 0,
-      carbs: parseInt(carbs) || 0,
-      fat: parseInt(fat) || 0,
-    };
+    if (!token) {
+      Alert.alert('Error', 'Please log in to save food logs.');
+      return;
+    }
 
-    setMeals(prev => ({
-      ...prev,
-      [selectedMealType]: [...prev[selectedMealType], newFood],
-    }));
+    try {
+      const foodLogData = {
+        name: foodName.trim(),
+        brand: '',
+        calories: parseInt(calories) || 0,
+        protein: parseInt(protein) || 0,
+        carbs: parseInt(carbs) || 0,
+        fat: parseInt(fat) || 0,
+        servingSize: '1 serving',
+        mealType: selectedMealType,
+        date: selectedDate.toISOString().split('T')[0]
+      };
 
-    // Reset form
-    setFoodName('');
-    setCalories('');
-    setProtein('');
-    setCarbs('');
-    setFat('');
-    setAddMealModalVisible(false);
+      console.log('🍎 Saving manual food entry to Firebase:', foodLogData);
+      const response = await api.logFood(foodLogData, token);
+      console.log('✅ Manual food entry saved:', response);
+
+      if (response.success) {
+        const newFood = {
+          id: response.food_log_id,
+          name: foodName.trim(),
+          calories: parseInt(calories) || 0,
+          protein: parseInt(protein) || 0,
+          carbs: parseInt(carbs) || 0,
+          fat: parseInt(fat) || 0,
+        };
+
+        setMeals(prev => ({
+          ...prev,
+          [selectedMealType]: [...prev[selectedMealType], newFood],
+        }));
+
+        // Reset form
+        setFoodName('');
+        setCalories('');
+        setProtein('');
+        setCarbs('');
+        setFat('');
+        setAddMealModalVisible(false);
+
+        Alert.alert('Success', 'Food logged successfully!');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save manual food entry:', error);
+      Alert.alert('Error', 'Failed to save food. Please try again.');
+    }
   };
 
   /**

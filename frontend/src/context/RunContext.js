@@ -578,12 +578,22 @@ export const RunProvider = ({ children }) => {
         
         // Try to create workout session in backend
         try {
+          console.log('🔐 Auth token status:', token ? 'Present' : 'Missing');
+          console.log('🔐 Token value:', token ? `${token.substring(0, 20)}...` : 'null');
+          
           const startTime = Date.now();
+          console.log('🏃 Attempting to start workout session...');
           const session = await api.startWorkout('run', startTime, token);
+          console.log('✅ Workout session started with backend:', session);
           dispatch({ type: RUN_ACTIONS.SET_SESSION_ID, payload: session.id });
           startPointUpload();
-          console.log('✅ Workout session started with backend:', session.id);
         } catch (backendError) {
+          console.error('❌ Backend workout creation failed:', backendError);
+          console.error('❌ Error details:', {
+            message: backendError.message,
+            status: backendError.status,
+            response: backendError.response
+          });
           console.warn('⚠️ Backend unavailable, running in offline mode:', backendError.message);
         }
         
