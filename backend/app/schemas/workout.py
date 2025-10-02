@@ -5,7 +5,7 @@ from typing import List, Optional
 class LocationPoint(BaseModel):
     lat: float
     lng: float
-    t_ms: int  # timestamp in milliseconds
+    t_ms: float  # timestamp in milliseconds (allows sub-millisecond precision)
 
 # Start a workout
 class WorkoutStartRequest(BaseModel):

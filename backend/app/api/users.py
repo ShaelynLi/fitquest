@@ -31,8 +31,6 @@ def register_user(req: OnboardingRequest):
                 display_name=f"{req.firstName} {req.lastName}",
                 disabled=False,
             )
-            # Auto-verify email for development/testing
-            firebase_auth.update_user(user.uid, email_verified=True)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to create user: {e}")
         
@@ -97,14 +95,30 @@ def register_user(req: OnboardingRequest):
             data = r.json()
             id_token = data["idToken"]
             
+            # Send verification email
+            oob_url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={settings.FIREBASE_WEB_API_KEY}"
+            oob_payload = {"requestType": "VERIFY_EMAIL", "idToken": id_token}
+            oob_resp = httpx.post(oob_url, json=oob_payload, timeout=10.0)
+            
+            # Log email sending status for debugging
+            print(f"📧 Email verification request status: {oob_resp.status_code}")
+            if oob_resp.status_code != 200:
+                error_detail = oob_resp.json().get("error", {}) if oob_resp.content else {}
+                print(f"❌ Email sending failed: {error_detail}")
+                detail = error_detail.get("message", "SEND_VERIFY_EMAIL_FAILED")
+                raise HTTPException(status_code=400, detail=detail)
+            else:
+                print(f"✅ Verification email sent successfully to {req.email}")
+            
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to authenticate user: {e}")
         
         return OnboardingResponse(
             success=True,
-            message="User registration completed successfully",
+            message="User registration completed successfully. Please check your email for verification.",
             user_id=user.uid,
-            daily_calories=req.dailyCalories
+            daily_calories=req.dailyCalories,
+            temp_token=id_token  # Return temp token for verification flow
         )
         
     except HTTPException:

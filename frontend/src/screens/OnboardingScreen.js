@@ -12,9 +12,12 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, spacing, typography, globalStyles } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
+import { Camera } from 'expo-camera';
 
 const { width, height } = Dimensions.get('window');
 
@@ -58,14 +61,52 @@ export default function OnboardingScreen({ navigation }) {
     
     // Step 4: Preferences
     units: 'metric',
-    notifications: true,
+    notifications: false,
     healthKit: false,
+    camera: false,
   });
+
+  // Local Date object state for inline calendar
+  const [dobDate, setDobDate] = useState(new Date());
 
   const totalSteps = 4;
 
   const updateUserData = (field, value) => {
     setUserData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePermissionToggle = async (permissionType) => {
+    let granted = false;
+    
+    switch (permissionType) {
+      case 'notifications':
+        granted = await requestNotificationPermission();
+        break;
+      case 'healthKit':
+        granted = await requestLocationPermission();
+        break;
+      case 'camera':
+        granted = await requestCameraPermission();
+        break;
+      default:
+        return;
+    }
+    
+    // Update the permission state based on actual system permission
+    updateUserData(permissionType, granted);
+  };
+
+  const formatDateYYYYMMDD = (dateObj) => {
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const handleDobChange = (event, selectedDate) => {
+    const currentDate = selectedDate || dobDate;
+    setDobDate(currentDate);
+    updateUserData('dateOfBirth', formatDateYYYYMMDD(currentDate));
   };
 
   const nextStep = () => {
@@ -118,8 +159,8 @@ export default function OnboardingScreen({ navigation }) {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
-          'Permission Required',
-          'Location permission is needed for GPS tracking during runs.',
+          'Location Permission Required',
+          'Location permission is needed for GPS tracking during runs. You can enable it later in Settings.',
           [{ text: 'OK' }]
         );
         return false;
@@ -127,6 +168,42 @@ export default function OnboardingScreen({ navigation }) {
       return true;
     } catch (error) {
       console.error('Error requesting location permission:', error);
+      return false;
+    }
+  };
+
+  const requestNotificationPermission = async () => {
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Notification Permission Required',
+          'Notification permission is needed to send you reminders and updates. You can enable it later in Settings.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      return false;
+    }
+  };
+
+  const requestCameraPermission = async () => {
+    try {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Required',
+          'Camera permission is needed to scan food barcodes. You can enable it later in Settings.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error requesting camera permission:', error);
       return false;
     }
   };
@@ -146,9 +223,15 @@ export default function OnboardingScreen({ navigation }) {
         healthKit: locationGranted
       };
 
-      await completeOnboarding(onboardingData);
-      // After successful onboarding and auth, go to main app
-      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+      // Complete onboarding (creates user and sends verification email)
+      const result = await completeOnboarding(onboardingData);
+      
+      // Navigate to email verification screen instead of main app
+      navigation.navigate('EmailVerification', {
+        email: userData.email,
+        password: userData.password,
+        tempToken: result.tempToken || result.id_token, // Use temp token if available
+      });
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to complete onboarding');
     } finally {
@@ -229,7 +312,22 @@ export default function OnboardingScreen({ navigation }) {
         {renderInput('Password', 'password', 'Create a password', 'default', true)}
         {renderInput('Confirm Password', 'confirmPassword', 'Confirm your password', 'default', true)}
 
-        {renderInput('Date of Birth', 'dateOfBirth', 'YYYY-MM-DD', 'default')}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Date of Birth</Text>
+          <View style={styles.inlinePickerContainer}>
+            <DateTimePicker
+              testID="dobPicker"
+              value={dobDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+              maximumDate={new Date()}
+              onChange={handleDobChange}
+            />
+          </View>
+          {!!userData.dateOfBirth && (
+            <Text style={styles.helperText}>Selected: {userData.dateOfBirth}</Text>
+          )}
+        </View>
 
         {renderSelectButton('Gender', 'gender', userData.gender, [
           { value: 'male', label: 'Male' },
@@ -304,7 +402,7 @@ export default function OnboardingScreen({ navigation }) {
             </View>
             <TouchableOpacity
               style={[styles.toggle, userData.notifications && styles.toggleActive]}
-              onPress={() => updateUserData('notifications', !userData.notifications)}
+              onPress={() => handlePermissionToggle('notifications')}
             >
               <View style={[styles.toggleThumb, userData.notifications && styles.toggleThumbActive]} />
             </TouchableOpacity>
@@ -318,9 +416,23 @@ export default function OnboardingScreen({ navigation }) {
             </View>
             <TouchableOpacity
               style={[styles.toggle, userData.healthKit && styles.toggleActive]}
-              onPress={() => updateUserData('healthKit', !userData.healthKit)}
+              onPress={() => handlePermissionToggle('healthKit')}
             >
               <View style={[styles.toggleThumb, userData.healthKit && styles.toggleThumbActive]} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.preferenceItem}>
+            <Ionicons name="camera" size={24} color={colors.aurora.purple} />
+            <View style={styles.preferenceContent}>
+              <Text style={styles.preferenceTitle}>Camera Access</Text>
+              <Text style={styles.preferenceDescription}>For scanning food barcodes</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.toggle, userData.camera && styles.toggleActive]}
+              onPress={() => handlePermissionToggle('camera')}
+            >
+              <View style={[styles.toggleThumb, userData.camera && styles.toggleThumbActive]} />
             </TouchableOpacity>
           </View>
         </View>

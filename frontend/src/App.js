@@ -9,6 +9,7 @@ import { GamificationProvider } from './context/GamificationContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
+import EmailVerificationScreen from './screens/EmailVerificationScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import HomeScreen from './screens/HomeScreen';
 import RunTab from './tabs/RunTab';
@@ -147,6 +148,7 @@ function RootNavigator() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Pokedex" component={PokedexScreen} />
       <Stack.Screen name="PetCollection" component={PetCollectionScreen} />

@@ -63,6 +63,7 @@ class OnboardingResponse(BaseModel):
     message: str
     user_id: str
     daily_calories: Optional[int] = None
+    temp_token: Optional[str] = None
 
 # Profile update schemas
 class ProfileUpdate(BaseModel):

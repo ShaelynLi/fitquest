@@ -72,17 +72,22 @@ class BackendApiService {
   async makeRequest(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
 
-    const defaultOptions = {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...options.headers,
-      },
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...options.headers,
+    };
+
+    const requestOptions = {
+      method: options.method || 'GET',
+      headers,
+      ...options,
       timeout: 15000,
     };
 
-    const requestOptions = { ...defaultOptions, ...options };
+    // Remove headers from options to avoid duplication
+    delete requestOptions.headers;
+    requestOptions.headers = headers;
 
     try {
       console.log('Backend API request:', url);
@@ -255,6 +260,32 @@ class BackendApiService {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
+    });
+  }
+
+  /**
+   * Resend verification email
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Resend response
+   */
+  async resendVerificationEmail(token) {
+    return await this.makeRequest('/api/auth/resend-verification', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  }
+
+  /**
+   * Check email verification status
+   * @param {string} email - User email
+   * @returns {Promise<Object>} Verification status
+   */
+  async checkVerificationStatus(email) {
+    return await this.makeRequest('/api/auth/check-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     });
   }
 

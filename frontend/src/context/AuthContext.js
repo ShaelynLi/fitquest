@@ -44,17 +44,13 @@ export function AuthProvider({ children }) {
   };
 
   const completeOnboarding = async (userData) => {
-    // Complete onboarding/registration then authenticate
+    // Complete onboarding/registration (sends verification email)
     const res = await api.completeOnboarding(userData);
     if (!res.success) {
       throw new Error(res.message || 'Onboarding failed');
     }
-    const loginRes = await api.login(userData.email, userData.password);
-    const idToken = loginRes.id_token;
-    setToken(idToken);
-    await AsyncStorage.setItem(STORAGE_KEY, idToken);
-    const me = await api.me(idToken);
-    setUser(me);
+    // Return the result without logging in (user needs to verify email first)
+    return res;
   };
 
   const logout = async () => {

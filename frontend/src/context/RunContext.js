@@ -305,23 +305,25 @@ export const RunProvider = ({ children }) => {
       return;
     }
 
-    try {
-      const pointsToUpload = [...pendingPointsRef.current];
-      pendingPointsRef.current = []; // Clear pending points
+    const pointsToUpload = [...pendingPointsRef.current];
+    if (pointsToUpload.length === 0) return;
+    
+    pendingPointsRef.current = []; // Clear pending points
 
+    try {
       // Convert points to backend format
       const formattedPoints = pointsToUpload.map(point => ({
         lat: point.latitude,
         lng: point.longitude,
-        t_ms: point.timestamp,
+        t_ms: point.timestamp, // Float timestamp for sub-millisecond precision
       }));
 
       await api.addWorkoutPoints(currentState.sessionId, formattedPoints, token);
       console.log(`📍 Uploaded ${formattedPoints.length} GPS points to backend`);
     } catch (error) {
       console.error('❌ Failed to upload GPS points:', error);
-      // Re-add points to pending queue for retry
-      pendingPointsRef.current.unshift(...pointsToUpload);
+      // Re-add points to pending queue for retry on next interval
+      pendingPointsRef.current = [...pointsToUpload, ...pendingPointsRef.current];
     }
   };
 
