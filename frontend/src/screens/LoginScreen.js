@@ -24,6 +24,8 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     try {
       await login(email.trim(), password);
+      // On successful login, go to main app
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (e) {
       setError(e.message || 'Login failed');
     } finally {
@@ -74,7 +76,7 @@ export default function LoginScreen({ navigation }) {
 
       {/* Register Link */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('Register')}
+        onPress={() => navigation.navigate('Onboarding')}
         style={styles.registerLink}
       >
         <Text style={styles.registerText}>
