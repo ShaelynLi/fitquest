@@ -72,17 +72,22 @@ class BackendApiService {
   async makeRequest(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
 
-    const defaultOptions = {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...options.headers,
-      },
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...options.headers,
+    };
+
+    const requestOptions = {
+      method: options.method || 'GET',
+      headers,
+      ...options,
       timeout: 15000,
     };
 
-    const requestOptions = { ...defaultOptions, ...options };
+    // Remove headers from options to avoid duplication
+    delete requestOptions.headers;
+    requestOptions.headers = headers;
 
     try {
       console.log('Backend API request:', url);
@@ -273,6 +278,32 @@ class BackendApiService {
   }
 
   /**
+   * Resend verification email
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Resend response
+   */
+  async resendVerificationEmail(token) {
+    return await this.makeRequest('/api/auth/resend-verification', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  }
+
+  /**
+   * Check email verification status
+   * @param {string} email - User email
+   * @returns {Promise<Object>} Verification status
+   */
+  async checkVerificationStatus(email) {
+    return await this.makeRequest('/api/auth/check-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  /**
    * Search for food by barcode
    * @param {string} barcode - 13-digit barcode
    * @returns {Promise<Object>} Food information or error
@@ -446,81 +477,119 @@ class BackendApiService {
     return await this.makeRequest(`/api/workouts/${sessionId}`);
   }
 
-  // ============ MEALS API METHODS ============
+  /**
+   * Complete user onboarding
+   * @param {Object} userData - Complete user onboarding data
+   * @returns {Promise<Object>} Onboarding response
+   */
+  async completeOnboarding(userData) {
+    return await this.makeRequest('/api/users/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
 
   /**
-   * Log a meal/food item
-   * @param {string} mealType - Meal type (breakfast, lunch, dinner, snacks)
-   * @param {string} date - Date in YYYY-MM-DD format
-   * @param {Object} foodData - Food item data with nutrition info
-   * @param {string} token - Auth token (optional, for authenticated users)
-   * @returns {Promise<Object>} Logged meal entry
+   * Update user profile
+   * @param {string} token - Auth token
+   * @param {Object} profileData - Profile data to update
+   * @returns {Promise<Object>} Update response
    */
-  async logMeal(mealType, date, foodData, token = null) {
+  async updateUserProfile(token, profileData) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return await this.makeRequest('/api/users/update_profile', {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  // ============ FOOD LOGGING API METHODS ============
+
+  /**
+   * Log a food item for the current user
+   * @param {Object} foodData - Food data to log
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Log response
+   */
+  async logFood(foodData, token) {
     const headers = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest('/api/meals/log', {
+    return await this.makeRequest('/api/foods/log', {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        meal_type: mealType,
-        date: date,
-        food: {
-          name: foodData.name,
-          brand: foodData.brand || null,
-          fatsecret_id: foodData.fatsecret_id || null,
-          calories: foodData.calories || 0,
-          protein: foodData.protein || 0,
-          carbs: foodData.carbs || 0,
-          fat: foodData.fat || 0,
-          fiber: foodData.fiber || 0,
-          sugar: foodData.sugar || 0,
-          saturated_fat: foodData.saturated_fat || 0,
-          sodium: foodData.sodium || 0,
-          cholesterol: foodData.cholesterol || 0,
-          potassium: foodData.potassium || 0,
-          serving_amount: foodData.servingAmount || 100,
-          serving_unit: foodData.measurementMode === 'gram' ? 'g' : 'serving',
-          measurement_mode: foodData.measurementMode || 'gram',
-        },
-      }),
+      body: JSON.stringify(foodData),
     });
   }
 
   /**
-   * Get all meals for a specific date
-   * @param {string} date - Date in YYYY-MM-DD format
-   * @param {string} token - Auth token (optional, for authenticated users)
-   * @returns {Promise<Object>} Daily nutrition summary with meals
+   * Get food logs for the current user
+   * @param {string} targetDate - Optional date filter (YYYY-MM-DD)
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Food logs response
    */
-  async getDailyMeals(date, token = null) {
+  async getFoodLogs(targetDate = null, token) {
     const headers = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest(`/api/meals/daily/${date}`, {
+    const url = targetDate 
+      ? `/api/foods/logs?target_date=${targetDate}`
+      : '/api/foods/logs';
+
+    return await this.makeRequest(url, {
+      method: 'GET',
       headers,
     });
   }
 
   /**
-   * Delete a logged meal
-   * @param {string} mealId - Meal entry ID
-   * @param {string} token - Auth token (optional, for authenticated users)
-   * @returns {Promise<Object>} Success confirmation
+   * Delete a food log entry
+   * @param {string} logId - Food log ID to delete
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Delete response
    */
-  async deleteMeal(mealId, token = null) {
+  async deleteFoodLog(logId, token) {
     const headers = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest(`/api/meals/${mealId}`, {
+    return await this.makeRequest(`/api/foods/logs/${logId}`, {
       method: 'DELETE',
+      headers,
+    });
+  }
+
+  /**
+   * Get nutrition summary for a date range
+   * @param {string} startDate - Start date (YYYY-MM-DD)
+   * @param {string} endDate - End date (YYYY-MM-DD)
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Nutrition summary
+   */
+  async getNutritionSummary(startDate = null, endDate = null, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    let url = '/api/foods/nutrition-summary';
+    const params = [];
+    if (startDate) params.push(`start_date=${startDate}`);
+    if (endDate) params.push(`end_date=${endDate}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
+
+    return await this.makeRequest(url, {
+      method: 'GET',
       headers,
     });
   }

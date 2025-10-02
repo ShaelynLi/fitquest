@@ -8,6 +8,9 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { GamificationProvider } from './context/GamificationContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
+import EmailVerificationScreen from './screens/EmailVerificationScreen';
+import WelcomeScreen from './screens/WelcomeScreen';
 import HomeScreen from './screens/HomeScreen';
 import RunTab from './tabs/RunTab';
 import PlusScreen from './screens/PlusScreen';
@@ -137,22 +140,19 @@ function RootNavigator() {
   const BYPASS_AUTH = true;
   
   const { user, loading } = useAuth();
-  if (!BYPASS_AUTH && loading) return null;
+  
+  if (loading) return null;
   
   return (
-    <Stack.Navigator>
-      {BYPASS_AUTH || user ? (
-        <>
-          <Stack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
-          <Stack.Screen name="PetCollection" component={PetCollectionScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="FoodSearch" component={FoodSearchScreen} options={{ headerShown: false }} />
-        </>
-      ) : (
-        <>
-          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
-        </>
-      )}
+    <Stack.Navigator initialRouteName={BYPASS_AUTH || user ? "Main" : "Welcome"} screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+      <Stack.Screen name="Main" component={Tabs} />
+      <Stack.Screen name="PetCollection" component={PetCollectionScreen} />
+      <Stack.Screen name="FoodSearch" component={FoodSearchScreen} />
     </Stack.Navigator>
   );
 }

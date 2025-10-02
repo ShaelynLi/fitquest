@@ -27,8 +27,10 @@ export default function PlusScreen({ navigation }) {
       color: colors.blue[100],
       iconColor: colors.blue[600],
       onPress: () => {
-        // Navigate to barcode scanner
-        console.log('Barcode Scan - TODO');
+        navigation.navigate('FoodSearch', { 
+          mealType: 'snacks',
+          showBarcodeScanner: true 
+        });
       }
     },
     {

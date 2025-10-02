@@ -6,6 +6,8 @@ from app.api.workout import router as workout_router
 from app.api.users import router as users_router
 from app.api.foods import router as foods_router
 from app.api.meals import router as meals_router
+from app.core.firebase import db, auth_client
+from app.services.fatsecret import fatsecret_service
 import os
 
 app = FastAPI(
@@ -39,14 +41,54 @@ def root():
     return {"status": "ok", "message": "FitQuest API is running"}
 
 @app.get("/health")
-def health_check():
-    """Health check endpoint for Cloud Run"""
-    return {"status": "healthy", "service": "fitquest-api"}
+async def health_check():
+    """Aggregated health check for core dependencies."""
+    # Firebase Auth check
+    auth_ok = False
+    auth_error = None
+    try:
+        iterator = auth_client.list_users(page_size=1)  # type: ignore[attr-defined]
+        next(iterator.iterate_all(), None)
+        auth_ok = True
+    except Exception as e:
+        auth_error = str(e)
+
+    # Firestore check
+    firestore_ok = False
+    firestore_error = None
+    try:
+        if db is not None:
+            _ = db.collection("__health__").document("_ping").get()
+            firestore_ok = True
+        else:
+            firestore_error = "Firestore client is None"
+    except Exception as e:
+        firestore_error = str(e)
+
+    # FatSecret check (lightweight)
+    fatsecret_ok = False
+    fatsecret_error = None
+    try:
+        _ = await fatsecret_service.search_foods("apple", 0, 1)
+        fatsecret_ok = True
+    except Exception as e:
+        fatsecret_error = str(e)
+
+    overall_ok = auth_ok and firestore_ok and fatsecret_ok
+    return {
+        "status": "ok" if overall_ok else "degraded",
+        "service": "fitquest-api",
+        "dependencies": {
+            "firebase_auth": {"ok": auth_ok, "error": auth_error},
+            "firestore": {"ok": firestore_ok, "error": firestore_error},
+            "fatsecret": {"ok": fatsecret_ok, "error": fatsecret_error},
+        },
+    }
 
 @app.get("/api/health")
-def api_health_check():
-    """API health check endpoint"""
-    return {"status": "ok"}
+async def api_health_check():
+    """API aggregated health check (same as root /health)."""
+    return await health_check()
 
 @app.get("/api")
 def api_root():
