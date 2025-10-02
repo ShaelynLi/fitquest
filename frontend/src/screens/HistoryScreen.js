@@ -387,7 +387,11 @@ export default function HistoryScreen({ navigation }) {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.userInfo}
-            onPress={() => navigation.navigate('Profile')}
+            onPress={() => {
+              console.log('Avatar clicked, navigating to Profile...');
+              // Use getParent() to access the Stack navigator
+              navigation.getParent()?.navigate('Profile');
+            }}
           >
             <View style={styles.avatar}>
               <Ionicons name="person" size={24} color={colors.white} />
