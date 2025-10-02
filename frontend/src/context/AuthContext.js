@@ -18,11 +18,38 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  // We no longer gate UI on onboarding; successful auth shows main UI
 
+  // Load stored token on app startup to keep user logged in
   useEffect(() => {
-    // No auto-login on startup - always start from WelcomeScreen
-    setLoading(false);
+    const loadStoredAuth = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem(STORAGE_KEY);
+
+        if (storedToken) {
+          console.log('📱 Found stored token, restoring session...');
+
+          // Validate token and get user data
+          try {
+            const userData = await api.me(storedToken);
+            setToken(storedToken);
+            setUser(userData);
+            console.log('✅ Session restored successfully');
+          } catch (error) {
+            console.error('❌ Stored token invalid, clearing...', error);
+            // Token expired or invalid, clear it
+            await AsyncStorage.removeItem(STORAGE_KEY);
+          }
+        } else {
+          console.log('📱 No stored token found');
+        }
+      } catch (error) {
+        console.error('❌ Failed to load stored auth:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStoredAuth();
   }, []);
 
   const login = async (email, password) => {
