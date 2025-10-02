@@ -137,7 +137,7 @@ function Tabs() {
 
 function RootNavigator() {
   // Bypass authentication for development - always show main app
-  const BYPASS_AUTH = true;
+  const BYPASS_AUTH = false;
   
   const { user, loading } = useAuth();
   

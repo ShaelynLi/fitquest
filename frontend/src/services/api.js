@@ -530,6 +530,87 @@ class BackendApiService {
   }
 
   /**
+   * Log a meal for the current user
+   * @param {string} mealType - Type of meal (breakfast, lunch, dinner, snacks)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Object} foodData - Food data to log
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Log response
+   */
+  async logMeal(mealType, date, foodData, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const mealRequest = {
+      meal_type: mealType,
+      date: date,
+      food: foodData
+    };
+
+    return await this.makeRequest('/api/meals/log', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(mealRequest),
+    });
+  }
+
+  /**
+   * Get meals for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Meals response
+   */
+  async getMeals(date, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/daily/${date}`, {
+      method: 'GET',
+      headers,
+    });
+  }
+
+  /**
+   * Get daily nutrition summary
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Nutrition summary response
+   */
+  async getNutritionSummary(date, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/nutrition?date=${date}`, {
+      method: 'GET',
+      headers,
+    });
+  }
+
+  /**
+   * Delete a meal entry
+   * @param {string} mealId - ID of the meal to delete
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Delete response
+   */
+  async deleteMeal(mealId, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/${mealId}`, {
+      method: 'DELETE',
+      headers,
+    });
+  }
+
+  /**
    * Get food logs for the current user
    * @param {string} targetDate - Optional date filter (YYYY-MM-DD)
    * @param {string} token - Auth token

@@ -5,7 +5,7 @@ Provides endpoints for logging meals, tracking daily nutrition, and managing foo
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime, date
 from pydantic import BaseModel, Field
 from app.dependencies.auth import get_current_user
@@ -17,18 +17,18 @@ router = APIRouter(prefix="/meals", tags=["meals"])
 class MealFoodItem(BaseModel):
     """Individual food item in a meal"""
     name: str
-    brand: str | None = None
-    fatsecret_id: str | None = None
+    brand: Optional[str] = None
+    fatsecret_id: Optional[str] = None
     calories: float
     protein: float
     carbs: float
     fat: float
-    fiber: float | None = 0
-    sugar: float | None = 0
-    saturated_fat: float | None = 0
-    sodium: float | None = 0
-    cholesterol: float | None = 0
-    potassium: float | None = 0
+    fiber: Optional[float] = 0
+    sugar: Optional[float] = 0
+    saturated_fat: Optional[float] = 0
+    sodium: Optional[float] = 0
+    cholesterol: Optional[float] = 0
+    potassium: Optional[float] = 0
     serving_amount: float
     serving_unit: str = "g"
     measurement_mode: str = "gram"

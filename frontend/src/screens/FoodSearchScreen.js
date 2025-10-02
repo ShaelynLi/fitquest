@@ -258,30 +258,46 @@ export default function FoodSearchScreen({ navigation, route }) {
   };
 
   const handleAddFoodToMeal = async () => {
-    const amount = parseFloat(servingAmount) || 1;
-    const nutrition = calculateNutrition();
-
-    const foodToAdd = {
-      ...selectedFood,
-      servingAmount: amount,
-      measurementMode: measurementMode,
-      selectedServing: selectedServing,
-      ...nutrition,
-    };
+    if (!token) {
+      Alert.alert('Error', 'Please log in to save food logs.');
+      return;
+    }
 
     try {
+      const amount = parseFloat(servingAmount) || 1;
+      const nutrition = calculateNutrition();
+
+    const foodToAdd = {
+      name: selectedFood.name,
+      brand: selectedFood.brand || null,
+      fatsecret_id: selectedFood.fatSecretId || null,
+      calories: nutrition.calories,
+      protein: nutrition.protein,
+      carbs: nutrition.carbs,
+      fat: nutrition.fat,
+      fiber: nutrition.fiber || 0,
+      sugar: nutrition.sugar || 0,
+      saturated_fat: nutrition.saturated_fat || 0,
+      sodium: nutrition.sodium || 0,
+      cholesterol: nutrition.cholesterol || 0,
+      potassium: nutrition.potassium || 0,
+      serving_amount: amount,
+      serving_unit: "g",
+      measurement_mode: measurementMode,
+    };
+
       // Get today's date in YYYY-MM-DD format
       const today = new Date().toISOString().split('T')[0];
 
       // Log the meal to backend
-      const response = await api.logMeal(mealType, today, foodToAdd);
+      const response = await api.logMeal(mealType, today, foodToAdd, token);
 
       if (response.success) {
         console.log('✅ Meal logged successfully:', response.data);
         setShowFoodDetail(false);
 
         // Navigate back with success flag to trigger refresh
-        navigation.navigate('Home', {
+        navigation.navigate('Main', {
           screen: 'FoodTab',
           params: { mealLogged: true, timestamp: Date.now() }
         });
@@ -291,49 +307,6 @@ export default function FoodSearchScreen({ navigation, route }) {
     } catch (error) {
       console.error('Failed to log meal:', error);
       Alert.alert('Error', `Failed to save meal: ${error.message}`);
-    }
-  const handleAddFoodToMeal = async () => {
-    if (!token) {
-      Alert.alert('Error', 'Please log in to save food logs.');
-      return;
-    }
-
-    try {
-      const amount = parseFloat(servingAmount) || 1;
-      const foodToAdd = {
-        ...selectedFood,
-        servingAmount: amount,
-        totalCalories: Math.round(selectedFood.calories * amount),
-        totalProtein: Math.round(selectedFood.protein * amount * 10) / 10,
-        totalCarbs: Math.round(selectedFood.carbs * amount * 10) / 10,
-        totalFat: Math.round(selectedFood.fat * amount * 10) / 10,
-      };
-
-      console.log('🍎 Saving food to Firebase:', foodToAdd);
-      
-      const foodLogData = {
-        name: selectedFood.name,
-        brand: selectedFood.brand || '',
-        calories: foodToAdd.totalCalories,
-        protein: foodToAdd.totalProtein,
-        carbs: foodToAdd.totalCarbs,
-        fat: foodToAdd.totalFat,
-        servingSize: `${amount} ${selectedFood.servingSize || 'serving'}`,
-        mealType: mealType,
-        date: new Date().toISOString().split('T')[0]
-      };
-
-      const response = await api.logFood(foodLogData, token);
-      console.log('✅ Food saved to Firebase:', response);
-
-      if (response.success) {
-        setShowFoodDetail(false);
-        navigation.goBack();
-        Alert.alert('Success', 'Food logged successfully!');
-      }
-    } catch (error) {
-      console.error('❌ Failed to save food:', error);
-      Alert.alert('Error', 'Failed to save food. Please try again.');
     }
   };
 

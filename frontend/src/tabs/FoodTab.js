@@ -57,6 +57,12 @@ export default function FoodTab({ navigation, route }) {
 
   const calendarDates = generateCalendarDates();
 
+  const [meals, setMeals] = useState({
+    breakfast: [],
+    lunch: [],
+    dinner: [],
+    snacks: []
+  });
   const [addMealModalVisible, setAddMealModalVisible] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState('breakfast');
   const [foodName, setFoodName] = useState('');
@@ -108,28 +114,35 @@ export default function FoodTab({ navigation, route }) {
         handleFoodSelected(selectedFood, mealType);
         navigation.setParams({ selectedFood: undefined, mealType: undefined });
       }
-    }, [route.params?.selectedFood, route.params?.mealType])
+      
+      // Handle meal logged refresh
+      if (route.params?.mealLogged) {
+        console.log('🔄 Meal logged, refreshing data...');
+        loadFoodLogs();
+        navigation.setParams({ mealLogged: undefined, timestamp: undefined });
+      }
+    }, [route.params?.selectedFood, route.params?.mealType, route.params?.mealLogged])
   );
 
-  // Load food logs from Firebase
+  // Load meals from backend
   const loadFoodLogs = async () => {
     if (!token) return;
     
     try {
       setIsLoading(true);
       const dateStr = selectedDate.toISOString().split('T')[0];
-      console.log('🍎 Loading food logs for date:', dateStr);
+      console.log('🍎 Loading meals for date:', dateStr);
       
-      const response = await api.getFoodLogs(dateStr, token);
-      console.log('📊 Food logs response:', response);
+      const response = await api.getMeals(dateStr, token);
+      console.log('📊 Meals response:', response);
       
-      if (response.success) {
+      if (response.meals) {
         setMeals(response.meals);
-        console.log('✅ Food logs loaded successfully');
+        console.log('✅ Meals loaded successfully');
       }
     } catch (error) {
-      console.error('❌ Failed to load food logs:', error);
-      Alert.alert('Error', 'Failed to load food logs. Please try again.');
+      console.error('❌ Failed to load meals:', error);
+      Alert.alert('Error', 'Failed to load meals. Please try again.');
     } finally {
       setIsLoading(false);
     }
