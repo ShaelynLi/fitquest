@@ -15,8 +15,6 @@ import HomeScreen from './screens/HomeScreen';
 import RunTab from './tabs/RunTab';
 import PlusScreen from './screens/PlusScreen';
 import HistoryScreen from './screens/HistoryScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import PokedexScreen from './screens/PokedexScreen';
 import PetCollectionScreen from './screens/PetCollectionScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
 import FoodTab from './tabs/FoodTab';
@@ -138,22 +136,23 @@ function Tabs() {
 }
 
 function RootNavigator() {
-  const { loading } = useAuth();
+  // Bypass authentication for development - always show main app
+  const BYPASS_AUTH = false;
+  
+  const { user, loading } = useAuth();
   
   if (loading) return null;
   
   return (
-    <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName={BYPASS_AUTH || user ? "Main" : "Welcome"} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
       <Stack.Screen name="Main" component={Tabs} />
-      <Stack.Screen name="Pokedex" component={PokedexScreen} />
       <Stack.Screen name="PetCollection" component={PetCollectionScreen} />
       <Stack.Screen name="FoodSearch" component={FoodSearchScreen} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
     </Stack.Navigator>
   );
 }

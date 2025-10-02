@@ -114,8 +114,6 @@ class BackendApiService {
       }
 
       const data = await response.json();
-      console.log('Backend API response:', data);
-
       return data;
     } catch (error) {
       console.error('Backend API request failed:', error);
@@ -207,6 +205,22 @@ class BackendApiService {
       return response.data;
     } else {
       throw new Error('Failed to get food categories');
+    }
+  }
+
+  /**
+   * Get food image URL for a specific food
+   *
+   * @param {string} foodId - FatSecret food ID
+   * @returns {Promise<string|null>} Food image URL or null if not available
+   */
+  async getFoodImage(foodId) {
+    try {
+      const response = await this.makeRequest(`/api/foods/image/${foodId}`);
+      return response.image_url;
+    } catch (error) {
+      console.warn(`Failed to get image for food ${foodId}:`, error);
+      return null;
     }
   }
 
@@ -371,6 +385,7 @@ class BackendApiService {
       servingUnit: food.serving_unit || 'serving',
       verified: Boolean(food.verified),
       fatSecretId: food.fatsecret_id || null,
+      serving: food.serving || null, // Include the serving data with serving_id
     };
   }
 
@@ -511,6 +526,87 @@ class BackendApiService {
       method: 'POST',
       headers,
       body: JSON.stringify(foodData),
+    });
+  }
+
+  /**
+   * Log a meal for the current user
+   * @param {string} mealType - Type of meal (breakfast, lunch, dinner, snacks)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Object} foodData - Food data to log
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Log response
+   */
+  async logMeal(mealType, date, foodData, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const mealRequest = {
+      meal_type: mealType,
+      date: date,
+      food: foodData
+    };
+
+    return await this.makeRequest('/api/meals/log', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(mealRequest),
+    });
+  }
+
+  /**
+   * Get meals for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Meals response
+   */
+  async getMeals(date, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/daily/${date}`, {
+      method: 'GET',
+      headers,
+    });
+  }
+
+  /**
+   * Get daily nutrition summary
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Nutrition summary response
+   */
+  async getNutritionSummary(date, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/nutrition?date=${date}`, {
+      method: 'GET',
+      headers,
+    });
+  }
+
+  /**
+   * Delete a meal entry
+   * @param {string} mealId - ID of the meal to delete
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Delete response
+   */
+  async deleteMeal(mealId, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/${mealId}`, {
+      method: 'DELETE',
+      headers,
     });
   }
 
