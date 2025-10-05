@@ -392,31 +392,16 @@ class BackendApiService {
   // ============ WORKOUT API METHODS ============
 
   /**
-   * Start a new workout session
+   * Start a new workout session (DEPRECATED - use completeWorkout instead)
    * @param {string} workoutType - Type of workout (e.g., 'run')
    * @param {number} startTimeMs - Start timestamp in milliseconds
    * @param {string} token - Auth token (optional, for authenticated users)
    * @returns {Promise<Object>} Workout session response
    */
   async startWorkout(workoutType = 'run', startTimeMs = Date.now(), token = null) {
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // Get user's timezone offset
-    const timezoneOffset = new Date().getTimezoneOffset() / -60; // Convert to hours, positive for east of UTC
-    console.log(`🌍 User timezone offset: ${timezoneOffset} hours`);
-
-    return await this.makeRequest('/api/workouts/start', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        workout_type: workoutType,
-        start_time_ms: startTimeMs,
-        timezone_offset: timezoneOffset,
-      }),
-    });
+    console.warn('⚠️ startWorkout is deprecated. Use completeWorkout instead.');
+    // This method is kept for backward compatibility but should not be used
+    return { success: false, message: 'startWorkout is deprecated. Use completeWorkout instead.' };
   }
 
   /**
@@ -427,46 +412,9 @@ class BackendApiService {
    * @returns {Promise<Object>} Response with added points count
    */
   async addWorkoutPoints(sessionId, points, token = null) {
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const requestData = {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        session_id: sessionId,
-        points: points,
-      }),
-    };
-
-    // Retry mechanism for GPS points upload
-    const maxRetries = 3;
-    let lastError = null;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`📍 Attempting GPS points upload (attempt ${attempt}/${maxRetries})`);
-        const result = await this.makeRequest('/api/workouts/add-points', requestData);
-        console.log(`✅ GPS points uploaded successfully on attempt ${attempt}`);
-        return result;
-      } catch (error) {
-        lastError = error;
-        console.log(`❌ GPS points upload failed on attempt ${attempt}:`, error.message);
-        
-        if (attempt < maxRetries) {
-          // Wait before retry (exponential backoff)
-          const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
-          console.log(`⏳ Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    // All retries failed
-    console.error(`❌ GPS points upload failed after ${maxRetries} attempts`);
-    throw lastError;
+    console.warn('⚠️ addWorkoutPoints is deprecated. Use completeWorkout instead.');
+    // This method is kept for backward compatibility but should not be used
+    return { success: false, message: 'addWorkoutPoints is deprecated. Use completeWorkout instead.' };
   }
 
   /**
@@ -524,51 +472,9 @@ class BackendApiService {
    * @returns {Promise<Object>} Final workout session data
    */
   async finishWorkout(sessionId, endTimeMs = Date.now(), token = null) {
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // Get user's timezone offset
-    const timezoneOffset = new Date().getTimezoneOffset() / -60; // Convert to hours, positive for east of UTC
-    console.log(`🌍 User timezone offset for finish: ${timezoneOffset} hours`);
-
-    const requestData = {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        session_id: sessionId,
-        end_time_ms: endTimeMs,
-        timezone_offset: timezoneOffset,
-      }),
-    };
-
-    // Retry mechanism for workout finish
-    const maxRetries = 3;
-    let lastError = null;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`🏁 Attempting to finish workout (attempt ${attempt}/${maxRetries})`);
-        const result = await this.makeRequest('/api/workouts/finish', requestData);
-        console.log(`✅ Workout finished successfully on attempt ${attempt}`);
-        return result;
-      } catch (error) {
-        lastError = error;
-        console.log(`❌ Workout finish failed on attempt ${attempt}:`, error.message);
-        
-        if (attempt < maxRetries) {
-          // Wait before retry (exponential backoff)
-          const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
-          console.log(`⏳ Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    // All retries failed
-    console.error(`❌ Workout finish failed after ${maxRetries} attempts`);
-    throw lastError;
+    console.warn('⚠️ finishWorkout is deprecated. Use completeWorkout instead.');
+    // This method is kept for backward compatibility but should not be used
+    return { success: false, message: 'finishWorkout is deprecated. Use completeWorkout instead.' };
   }
 
   /**
