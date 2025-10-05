@@ -7,3 +7,5 @@
 export * from './AuthContext';
 export * from './RunContext';
 export * from './GamificationContext';
+export * from './DailyStatsContext';
+export * from './DailyFoodContext';

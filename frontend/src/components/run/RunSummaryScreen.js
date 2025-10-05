@@ -108,10 +108,16 @@ export default function RunSummaryScreen() {
 
   // Format pace
   const formatPace = (minutesPerKm) => {
-    if (minutesPerKm === 0 || !isFinite(minutesPerKm)) return '--:--';
-    const minutes = Math.floor(minutesPerKm);
-    const seconds = Math.round((minutesPerKm - minutes) * 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    if (minutesPerKm === 0 || !isFinite(minutesPerKm) || minutesPerKm < 0) return '--:--';
+    
+    // Apply reasonable limits to prevent extreme values
+    const clampedPace = Math.max(1, Math.min(99, minutesPerKm));
+    
+    const minutes = Math.floor(clampedPace);
+    const seconds = Math.round((clampedPace - minutes) * 60);
+    
+    // Ensure consistent formatting with leading zeros
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   // Calculate achievements

@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, colors, globalStyles } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { useGamification } from '../context/GamificationContext';
+import { useDailyStats } from '../context/DailyStatsContext';
+import { useDailyFood } from '../context/DailyFoodContext';
 import BlindBoxModal from '../components/gamification/BlindBoxModal';
 
 /**
@@ -28,22 +30,43 @@ export default function OverviewTab({ navigation }) {
     getCollectionStats,
     isLoading
   } = useGamification();
+  const {
+    dailyStats,
+    getFormattedDistance,
+    getFormattedDuration,
+    getLastActivityText,
+    isLoading: statsLoading
+  } = useDailyStats();
+  const {
+    dailyFood,
+    getFormattedNutrition,
+    getDailyGoals,
+    getCalorieProgress,
+    getLastMealText,
+    isLoading: foodLoading
+  } = useDailyFood();
 
   // Modal state
   const [showBlindBoxModal, setShowBlindBoxModal] = useState(false);
 
-  // Mock data - will be replaced with real data from backend
-  const [intake] = useState({
-    consumed: 72,
-    remaining: 3015,
-    total: 3087,
-    percentage: 2
-  });
+  // Get real intake data from daily food stats
+  const nutrition = getFormattedNutrition();
+  const goals = getDailyGoals();
+  const intake = {
+    consumed: nutrition.calories,
+    remaining: Math.max(goals.calories - nutrition.calories, 0),
+    total: goals.calories,
+    percentage: getCalorieProgress()
+  };
 
-  const [activity] = useState({
-    burned: 4538,
-    lastActivity: 'More than 24hrs ago'
-  });
+  // Get real activity data from daily stats
+  const activity = {
+    distance: getFormattedDistance(),
+    duration: getFormattedDuration(),
+    calories: dailyStats.totalCalories,
+    lastActivity: getLastActivityText(),
+    workoutCount: dailyStats.workoutCount
+  };
 
   const stats = getCollectionStats();
 
@@ -92,10 +115,16 @@ export default function OverviewTab({ navigation }) {
           <Text style={styles.cardLabel}>Activity</Text>
           <View style={styles.cardContent}>
             <View style={styles.mainMetric}>
-              <Text style={[styles.mainNumber, { color: colors.pink[500] }]}>
-                {activity.burned.toLocaleString()}
+              <Text style={[styles.mainNumber, { color: colors.aurora.green }]}>
+                {activity.distance.km.toFixed(2)}
               </Text>
-              <Text style={styles.unitText}>kcal</Text>
+              <Text style={styles.unitText}>km</Text>
+            </View>
+
+            <View style={styles.activityDetails}>
+              <Text style={styles.activityDetailText}>
+                {activity.duration} • {activity.workoutCount} runs
+              </Text>
             </View>
 
             <View style={styles.activityStatus}>
@@ -312,6 +341,17 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     fontFamily: typography.body,
     color: colors.textSecondary,
+  },
+
+  activityDetails: {
+    marginTop: spacing.xs,
+  },
+
+  activityDetailText: {
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.body,
+    color: colors.textTertiary,
+    textAlign: 'center',
   },
 
   // Companion Card

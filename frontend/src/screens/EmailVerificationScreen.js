@@ -21,7 +21,7 @@ export default function EmailVerificationScreen({ navigation, route }) {
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState('pending'); // pending, verified, failed
 
-  // 检查验证状态（只在用户手动点击时调用）
+  // Check verification status (only called when user manually clicks)
   const checkVerificationStatus = async () => {
     if (!email) {
       Alert.alert('Error', 'Email not found. Please try registering again.');
@@ -33,7 +33,7 @@ export default function EmailVerificationScreen({ navigation, route }) {
       console.log('🔍 Checking verification status for:', email);
       console.log('📧 Route params:', route.params);
       
-      // 直接检查邮箱验证状态
+      // Directly check email verification status
       const status = await api.checkVerificationStatus(email);
       console.log('✅ Verification status check result:', status);
       
@@ -85,7 +85,7 @@ export default function EmailVerificationScreen({ navigation, route }) {
     }
   };
 
-  // 重发验证邮件
+  // Resend verification email
   const resendVerificationEmail = async () => {
     if (!tempToken) {
       Alert.alert('Error', 'Unable to resend verification email. Please try registering again.');
@@ -113,23 +113,23 @@ export default function EmailVerificationScreen({ navigation, route }) {
     }
   };
 
-  // 打开邮箱应用
+  // Open email app
   const openEmailApp = () => {
-    // 使用更通用的方法，尝试打开邮箱应用而不创建新邮件
+    // Use more generic method, try to open email app without creating new email
     const emailApps = [
-      // iOS Mail 应用
+      // iOS Mail app
       'message://',
-      // Gmail (如果安装了)
+      // Gmail (if installed)
       'googlegmail://',
-      // Outlook (如果安装了)
+      // Outlook (if installed)
       'ms-outlook://',
-      // 通用邮件应用
+      // Generic email app
       'mailto:',
     ];
 
     const tryOpenEmailApp = async (index = 0) => {
       if (index >= emailApps.length) {
-        // 如果所有方法都失败，显示提示
+        // If all methods fail, show prompt
         Alert.alert(
           'Open Email App',
           'Please manually open your email app to check for the verification email.',
@@ -153,14 +153,14 @@ export default function EmailVerificationScreen({ navigation, route }) {
     tryOpenEmailApp();
   };
 
-  // 返回重新注册
+  // Return to re-register
   const goBackToRegistration = () => {
     navigation.goBack();
   };
 
   useEffect(() => {
-    // 不自动检查验证状态，只等待用户手动点击
-    // 移除自动检查逻辑，避免无限循环提醒
+    // Don't automatically check verification status, only wait for user manual click
+    // Remove automatic check logic to avoid infinite loop alerts
   }, []);
 
   return (

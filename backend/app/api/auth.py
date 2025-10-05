@@ -348,9 +348,9 @@ def debug_user_status(email: str):
             "email_verified": user_record.email_verified,
             "disabled": user_record.disabled,
             "uid": user_record.uid,
-            "created_at": user_record.user_metadata.get("creation_time"),
-            "last_sign_in": user_record.user_metadata.get("last_sign_in_time"),
-            "provider_data": [provider.to_dict() for provider in user_record.provider_data],
+            "created_at": getattr(user_record.user_metadata, "creation_time", None),
+            "last_sign_in": getattr(user_record.user_metadata, "last_sign_in_time", None),
+            "provider_data": [{"provider_id": provider.provider_id, "email": provider.email} for provider in user_record.provider_data],
         }
     except auth_client.UserNotFoundError:
         print(f"❌ Debug: User not found: {email}")

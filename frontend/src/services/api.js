@@ -404,18 +404,23 @@ class BackendApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // Get user's timezone offset
+    const timezoneOffset = new Date().getTimezoneOffset() / -60; // Convert to hours, positive for east of UTC
+    console.log(`🌍 User timezone offset: ${timezoneOffset} hours`);
+
     return await this.makeRequest('/api/workouts/start', {
       method: 'POST',
       headers,
       body: JSON.stringify({
         workout_type: workoutType,
         start_time_ms: startTimeMs,
+        timezone_offset: timezoneOffset,
       }),
     });
   }
 
   /**
-   * Add GPS points to an active workout session
+   * Add GPS points to an active workout session with retry mechanism
    * @param {string} sessionId - Workout session ID
    * @param {Array} points - Array of GPS points with lat, lng, t_ms
    * @param {string} token - Auth token (optional, for authenticated users)
@@ -427,18 +432,92 @@ class BackendApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest('/api/workouts/add-points', {
+    const requestData = {
       method: 'POST',
       headers,
       body: JSON.stringify({
         session_id: sessionId,
         points: points,
       }),
-    });
+    };
+
+    // Retry mechanism for GPS points upload
+    const maxRetries = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📍 Attempting GPS points upload (attempt ${attempt}/${maxRetries})`);
+        const result = await this.makeRequest('/api/workouts/add-points', requestData);
+        console.log(`✅ GPS points uploaded successfully on attempt ${attempt}`);
+        return result;
+      } catch (error) {
+        lastError = error;
+        console.log(`❌ GPS points upload failed on attempt ${attempt}:`, error.message);
+        
+        if (attempt < maxRetries) {
+          // Wait before retry (exponential backoff)
+          const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // All retries failed
+    console.error(`❌ GPS points upload failed after ${maxRetries} attempts`);
+    throw lastError;
   }
 
   /**
-   * Finish a workout session
+   * Complete a workout session with full data from frontend
+   * @param {Object} workoutData - Complete workout data
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Completion response
+   */
+  async completeWorkout(workoutData, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const requestData = {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(workoutData),
+    };
+
+    // Retry mechanism for workout completion
+    const maxRetries = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🏁 Attempting to complete workout (attempt ${attempt}/${maxRetries})`);
+        console.log(`📊 Workout data: ${workoutData.workout_type}, GPS points: ${workoutData.gps_points?.length || 0}`);
+        const result = await this.makeRequest('/api/workouts/complete', requestData);
+        console.log(`✅ Workout completed successfully on attempt ${attempt}`);
+        return result;
+      } catch (error) {
+        lastError = error;
+        console.log(`❌ Workout completion failed on attempt ${attempt}:`, error.message);
+        
+        if (attempt < maxRetries) {
+          // Wait before retry (exponential backoff)
+          const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // All retries failed
+    console.error(`❌ Workout completion failed after ${maxRetries} attempts`);
+    throw lastError;
+  }
+
+  /**
+   * Finish a workout session with retry mechanism (legacy method)
    * @param {string} sessionId - Workout session ID
    * @param {number} endTimeMs - End timestamp in milliseconds
    * @param {string} token - Auth token (optional, for authenticated users)
@@ -450,14 +529,46 @@ class BackendApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest('/api/workouts/finish', {
+    // Get user's timezone offset
+    const timezoneOffset = new Date().getTimezoneOffset() / -60; // Convert to hours, positive for east of UTC
+    console.log(`🌍 User timezone offset for finish: ${timezoneOffset} hours`);
+
+    const requestData = {
       method: 'POST',
       headers,
       body: JSON.stringify({
         session_id: sessionId,
         end_time_ms: endTimeMs,
+        timezone_offset: timezoneOffset,
       }),
-    });
+    };
+
+    // Retry mechanism for workout finish
+    const maxRetries = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🏁 Attempting to finish workout (attempt ${attempt}/${maxRetries})`);
+        const result = await this.makeRequest('/api/workouts/finish', requestData);
+        console.log(`✅ Workout finished successfully on attempt ${attempt}`);
+        return result;
+      } catch (error) {
+        lastError = error;
+        console.log(`❌ Workout finish failed on attempt ${attempt}:`, error.message);
+        
+        if (attempt < maxRetries) {
+          // Wait before retry (exponential backoff)
+          const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // All retries failed
+    console.error(`❌ Workout finish failed after ${maxRetries} attempts`);
+    throw lastError;
   }
 
   /**
@@ -522,42 +633,37 @@ class BackendApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest('/api/foods/log', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(foodData),
-    });
-  }
-
-  /**
-   * Log a meal for the current user
-   * @param {string} mealType - Type of meal (breakfast, lunch, dinner, snacks)
-   * @param {string} date - Date in YYYY-MM-DD format
-   * @param {Object} foodData - Food data to log
-   * @param {string} token - Auth token
-   * @returns {Promise<Object>} Log response
-   */
-  async logMeal(mealType, date, foodData, token) {
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    // Retry mechanism for food logging
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🍎 Logging food (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest('/api/foods/log', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(foodData),
+        });
+        console.log('✅ Food logged successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Food logging attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
-
-    const mealRequest = {
-      meal_type: mealType,
-      date: date,
-      food: foodData
-    };
-
-    return await this.makeRequest('/api/meals/log', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(mealRequest),
-    });
+    
+    console.error('❌ Food logging failed after 3 attempts');
+    throw lastError;
   }
 
+
   /**
-   * Get meals for a specific date
+   * Get meals for a specific date (using foods endpoint)
    * @param {string} date - Date in YYYY-MM-DD format
    * @param {string} token - Auth token
    * @returns {Promise<Object>} Meals response
@@ -568,10 +674,31 @@ class BackendApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest(`/api/meals/daily/${date}`, {
-      method: 'GET',
-      headers,
-    });
+    // Retry mechanism for getting meals
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`📋 Getting meals for ${date} (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest(`/api/foods/logs?target_date=${date}`, {
+          method: 'GET',
+          headers,
+        });
+        console.log('✅ Meals retrieved successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Get meals attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Get meals failed after 3 attempts');
+    throw lastError;
   }
 
   /**

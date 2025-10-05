@@ -1,8 +1,146 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { api } from '../services';
 import { useAuth } from './AuthContext';
+import { useDailyStats } from './DailyStatsContext';
+
+// Helper function to calculate workout metrics from frontend data
+const calculateWorkoutMetrics = (state) => {
+  const routePoints = state.routePoints || [];
+  const startTime = state.startTime || Date.now();
+  const endTime = Date.now();
+  const duration = (endTime - startTime) / 1000; // seconds
+  
+  // Calculate total distance
+  let totalDistance = 0;
+  for (let i = 1; i < routePoints.length; i++) {
+    const prev = routePoints[i - 1];
+    const curr = routePoints[i];
+    if (prev.latitude && prev.longitude && curr.latitude && curr.longitude) {
+      const distance = calculateDistanceBetweenPoints(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+      totalDistance += distance;
+    }
+  }
+  
+  // Calculate pace with reasonable limits
+  let paceMinPerKm = 0;
+  let paceMinPerMile = 0;
+  let kmPerHour = 0;
+  let mph = 0;
+  
+  if (totalDistance > 0 && duration > 0) {
+    paceMinPerKm = (duration / 60) / (totalDistance / 1000);
+    paceMinPerMile = paceMinPerKm * 1.60934;
+    kmPerHour = (totalDistance / 1000) / (duration / 3600);
+    mph = kmPerHour * 0.621371;
+    
+    // Apply reasonable limits for display
+    // Maximum pace: 20 min/km (very slow walk)
+    // Minimum pace: 2 min/km (very fast run)
+    paceMinPerKm = Math.max(2, Math.min(20, paceMinPerKm));
+    paceMinPerMile = Math.max(3.2, Math.min(32, paceMinPerMile));
+    kmPerHour = Math.max(3, Math.min(30, kmPerHour));
+    mph = Math.max(1.9, Math.min(18.6, mph));
+  }
+  
+  // Format pace for display (MM:SS format) with fixed width
+  const formatPace = (minutesPerKm) => {
+    if (minutesPerKm <= 0 || !isFinite(minutesPerKm)) return "--:--";
+    
+    // Apply reasonable limits to prevent extreme values
+    const clampedPace = Math.max(1, Math.min(99, minutesPerKm));
+    
+    const minutes = Math.floor(clampedPace);
+    const seconds = Math.round((clampedPace - minutes) * 60);
+    
+    // Ensure consistent formatting with leading zeros
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Calculate calories (simple estimation)
+  const calories = totalDistance > 0 ? (totalDistance / 1000) * 70 * 1.0 : 0; // 70kg person, 1 cal/kg/km
+  
+  // Calculate elevation data
+  const elevations = routePoints.map(p => p.altitude || 0).filter(e => e > 0);
+  const elevationGain = elevations.length > 1 ? 
+    elevations.slice(1).reduce((sum, curr, i) => {
+      const diff = curr - elevations[i];
+      return sum + (diff > 0 ? diff : 0);
+    }, 0) : 0;
+  
+  const elevationLoss = elevations.length > 1 ? 
+    elevations.slice(1).reduce((sum, curr, i) => {
+      const diff = elevations[i] - curr;
+      return sum + (diff > 0 ? diff : 0);
+    }, 0) : 0;
+  
+  // Remove intensity analysis - not needed
+  
+  return {
+    distance: {
+      meters: Math.round(totalDistance),
+      kilometers: Math.round(totalDistance / 1000 * 100) / 100,
+      miles: Math.round(totalDistance / 1609.34 * 100) / 100
+    },
+    duration: {
+      seconds: Math.round(duration),
+      minutes: Math.round(duration / 60 * 100) / 100,
+      formatted: formatDuration(duration)
+    },
+    pace: {
+      min_per_km: Math.round(paceMinPerKm * 100) / 100,
+      min_per_mile: Math.round(paceMinPerMile * 100) / 100,
+      km_per_hour: Math.round(kmPerHour * 100) / 100,
+      mph: Math.round(mph * 100) / 100,
+      // Add formatted display values
+      display_km: formatPace(paceMinPerKm),
+      display_mile: formatPace(paceMinPerMile),
+      display_speed_km: `${Math.round(kmPerHour)} km/h`,
+      display_speed_mile: `${Math.round(mph)} mph`
+    },
+    calories: {
+      burned: Math.round(calories),
+      estimated: true,
+      formula: 'distance_based',
+      user_weight: 70
+    },
+    elevation_gain: Math.round(elevationGain),
+    elevation_loss: Math.round(elevationLoss),
+    elevation_profile: elevations
+  };
+};
+
+// Helper function to calculate distance between two points (using existing function)
+const calculateDistanceBetweenPoints = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c; // Distance in meters
+};
+
+// Helper function to format duration
+const formatDuration = (seconds) => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${secs}s`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  } else {
+    return `${secs}s`;
+  }
+};
 
 /**
  * RunContext - GPS Run Tracking State Management
@@ -228,15 +366,28 @@ const calculatePace = (distance, duration) => {
   if (distance === 0 || duration === 0) return 0;
   const distanceKm = distance / 1000;
   const durationMinutes = duration / 60;
-  return durationMinutes / distanceKm; // minutes per km
+  
+  // Prevent division by zero and extreme values
+  if (distanceKm < 0.001) return 0; // Less than 1 meter
+  
+  const pace = durationMinutes / distanceKm;
+  
+  // Apply reasonable limits (1-99 minutes per km)
+  return Math.max(1, Math.min(99, pace));
 };
 
-// Format pace for display (e.g., 5.5 -> "5:30")
+// Format pace for display (e.g., 5.5 -> "05:30") with fixed width
 const formatPace = (paceMinutes) => {
-  if (paceMinutes === 0) return "0:00";
-  const minutes = Math.floor(paceMinutes);
-  const seconds = Math.round((paceMinutes - minutes) * 60);
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  if (paceMinutes === 0 || !isFinite(paceMinutes)) return "--:--";
+  
+  // Apply reasonable limits to prevent extreme values
+  const clampedPace = Math.max(1, Math.min(99, paceMinutes));
+  
+  const minutes = Math.floor(clampedPace);
+  const seconds = Math.round((clampedPace - minutes) * 60);
+  
+  // Ensure consistent formatting with leading zeros
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
 const calculateCalories = (distance, duration, weight = 70) => {
@@ -260,6 +411,7 @@ export const useRun = () => {
 export const RunProvider = ({ children }) => {
   const [state, dispatch] = useReducer(runReducer, initialState);
   const { token } = useAuth();
+  const { addWorkoutData } = useDailyStats();
 
   // Use refs to persist across re-renders
   const locationSubscriptionRef = useRef(null);
@@ -298,33 +450,37 @@ export const RunProvider = ({ children }) => {
     }
   };
 
-  // Upload GPS points to backend
+  // Upload GPS points to backend - DISABLED: We now use completeWorkout instead
   const uploadPendingPoints = async () => {
-    const currentState = stateRef.current;
-    if (!currentState.sessionId || pendingPointsRef.current.length === 0) {
-      return;
-    }
-
-    const pointsToUpload = [...pendingPointsRef.current];
-    if (pointsToUpload.length === 0) return;
+    // Disabled: We now collect all GPS points locally and upload them all at once via completeWorkout
+    console.log('📍 GPS point upload disabled - using completeWorkout instead');
+    return;
     
-    pendingPointsRef.current = []; // Clear pending points
+    // const currentState = stateRef.current;
+    // if (!currentState.sessionId || pendingPointsRef.current.length === 0) {
+    //   return;
+    // }
 
-    try {
-      // Convert points to backend format
-      const formattedPoints = pointsToUpload.map(point => ({
-        lat: point.latitude,
-        lng: point.longitude,
-        t_ms: point.timestamp, // Float timestamp for sub-millisecond precision
-      }));
+    // const pointsToUpload = [...pendingPointsRef.current];
+    // if (pointsToUpload.length === 0) return;
+    
+    // pendingPointsRef.current = []; // Clear pending points
 
-      await api.addWorkoutPoints(currentState.sessionId, formattedPoints, token);
-      console.log(`📍 Uploaded ${formattedPoints.length} GPS points to backend`);
-    } catch (error) {
-      console.error('❌ Failed to upload GPS points:', error);
-      // Re-add points to pending queue for retry on next interval
-      pendingPointsRef.current = [...pointsToUpload, ...pendingPointsRef.current];
-    }
+    // try {
+    //   // Convert points to backend format
+    //   const formattedPoints = pointsToUpload.map(point => ({
+    //     lat: point.latitude,
+    //     lng: point.longitude,
+    //     t_ms: point.timestamp, // Float timestamp for sub-millisecond precision
+    //   }));
+
+    //   await api.addWorkoutPoints(currentState.sessionId, formattedPoints, token);
+    //   console.log(`📍 Uploaded ${formattedPoints.length} GPS points to backend`);
+    // } catch (error) {
+    //   console.error('❌ Failed to upload GPS points:', error);
+    //   // Re-add points to pending queue for retry on next interval
+    //   pendingPointsRef.current = [...pointsToUpload, ...pendingPointsRef.current];
+    // }
   };
 
   // Start periodic GPS point upload
@@ -345,8 +501,8 @@ export const RunProvider = ({ children }) => {
       uploadIntervalRef.current = null;
     }
     
-    // Upload any remaining points
-    uploadPendingPoints();
+    // Disabled: Upload any remaining points - we now use completeWorkout instead
+    // uploadPendingPoints();
   };
 
   // Start GPS tracking
@@ -576,26 +732,12 @@ export const RunProvider = ({ children }) => {
         await startLocationTracking();
         startMetricsTracking();
         
-        // Try to create workout session in backend
-        try {
-          console.log('🔐 Auth token status:', token ? 'Present' : 'Missing');
-          console.log('🔐 Token value:', token ? `${token.substring(0, 20)}...` : 'null');
-          
-          const startTime = Date.now();
-          console.log('🏃 Attempting to start workout session...');
-          const session = await api.startWorkout('run', startTime, token);
-          console.log('✅ Workout session started with backend:', session);
-          dispatch({ type: RUN_ACTIONS.SET_SESSION_ID, payload: session.id });
-          startPointUpload();
-        } catch (backendError) {
-          console.error('❌ Backend workout creation failed:', backendError);
-          console.error('❌ Error details:', {
-            message: backendError.message,
-            status: backendError.status,
-            response: backendError.response
-          });
-          console.warn('⚠️ Backend unavailable, running in offline mode:', backendError.message);
-        }
+        // Generate local session ID (no backend call during start)
+        const sessionId = `workout_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log('🏃 Starting local workout session:', sessionId);
+        dispatch({ type: RUN_ACTIONS.SET_SESSION_ID, payload: sessionId });
+        // Disable real-time GPS upload - we'll upload everything at the end
+        // startPointUpload();
         
       } catch (error) {
         console.error('❌ Failed to start workout session:', error);
@@ -633,19 +775,77 @@ export const RunProvider = ({ children }) => {
         stopLocationTracking();
         stopMetricsTracking();
         
-        // Try to finish workout session in backend (optional)
+        // Complete workout with full data from frontend
         const currentState = stateRef.current;
         if (currentState.sessionId) {
           try {
             stopPointUpload(); // Upload any remaining points
+            
+            // Prepare complete workout data
             const endTime = Date.now();
-            const finalSession = await api.finishWorkout(currentState.sessionId, endTime, token);
-            console.log('✅ Workout session completed and saved to backend:', finalSession);
+            const startTime = currentState.startTime || endTime;
+            
+            // Get user's timezone info
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const timezoneOffset = new Date().getTimezoneOffset() / -60;
+            
+            // Calculate all metrics from frontend data
+            const calculatedMetrics = calculateWorkoutMetrics(currentState);
+            
+            // Prepare complete workout data
+            const completeWorkoutData = {
+              session_id: currentState.sessionId,
+              workout_type: 'run',
+              
+              // Time information
+              start_time: {
+                timestamp: startTime,
+                timezone: timezone,
+                timezoneOffset: timezoneOffset
+              },
+              end_time: {
+                timestamp: endTime,
+                timezone: timezone,
+                timezoneOffset: timezoneOffset
+              },
+              
+              // GPS trajectory data
+              gps_points: currentState.routePoints || [],
+              
+              // Calculated metrics
+              calculated_metrics: calculatedMetrics
+            };
+            
+            console.log(`🏁 Completing workout with full data: ${currentState.sessionId}`);
+            console.log(`📊 GPS points: ${completeWorkoutData.gps_points.length}, Distance: ${calculatedMetrics.distance?.meters || 0}m`);
+            
+            const result = await api.completeWorkout(completeWorkoutData, token);
+            console.log('✅ Workout completed and saved to backend:', result);
+            
+            // Update daily stats with workout data
+            try {
+              const workoutData = {
+                distance: calculatedMetrics.distance?.meters || 0,
+                duration: calculatedMetrics.duration?.seconds || 0,
+                calories: calculatedMetrics.calories?.burned || 0,
+              };
+              await addWorkoutData(workoutData);
+              console.log('✅ Daily stats updated with workout data');
+            } catch (statsError) {
+              console.error('❌ Failed to update daily stats:', statsError);
+            }
+            
           } catch (backendError) {
+            console.error('❌ Failed to complete workout:', backendError);
+            console.error('❌ Error details:', {
+              message: backendError.message,
+              sessionId: currentState.sessionId,
+              endTime: new Date().toISOString()
+            });
             console.warn('⚠️ Failed to save to backend, but local workout completed:', backendError.message);
           }
         } else {
-          console.log('ℹ️ Workout completed in offline mode');
+          console.log('ℹ️ Workout completed locally (no session ID)');
         }
       } catch (error) {
         console.error('❌ Failed to complete workout session:', error);

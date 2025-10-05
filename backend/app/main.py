@@ -5,7 +5,6 @@ from app.api.auth import router as auth_router
 from app.api.workout import router as workout_router
 from app.api.users import router as users_router
 from app.api.foods import router as foods_router
-from app.api.meals import router as meals_router
 from app.core.firebase import db, auth_client
 from app.services.fatsecret import fatsecret_service
 import os
@@ -47,8 +46,10 @@ async def health_check():
     auth_ok = False
     auth_error = None
     try:
-        iterator = auth_client.list_users(page_size=1)  # type: ignore[attr-defined]
-        next(iterator.iterate_all(), None)
+        # Test auth client with a simple operation
+        users_page = auth_client.list_users(max_results=1)  # type: ignore[attr-defined]
+        # Just check if we can get the page object
+        _ = users_page.users
         auth_ok = True
     except Exception as e:
         auth_error = str(e)
@@ -58,7 +59,8 @@ async def health_check():
     firestore_error = None
     try:
         if db is not None:
-            _ = db.collection("__health__").document("_ping").get()
+            # Use a valid collection name for health check
+            _ = db.collection("health_check").document("ping").get()
             firestore_ok = True
         else:
             firestore_error = "Firestore client is None"
@@ -100,11 +102,9 @@ app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(workout_router, prefix="/workouts", tags=["workouts"])
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(foods_router)
-app.include_router(meals_router)
 
 # API Routes with /api prefix for Firebase Hosting reverse proxy
 app.include_router(auth_router, prefix="/api/auth", tags=["api-auth"])
 app.include_router(workout_router, prefix="/api/workouts", tags=["api-workouts"])
 app.include_router(users_router, prefix="/api/users", tags=["api-users"])
 app.include_router(foods_router, prefix="/api")
-app.include_router(meals_router, prefix="/api")

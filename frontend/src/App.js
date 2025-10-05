@@ -6,6 +6,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GamificationProvider } from './context/GamificationContext';
+import { DailyStatsProvider } from './context/DailyStatsContext';
+import { DailyFoodProvider } from './context/DailyFoodContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
@@ -189,9 +191,13 @@ export default function App() {
   return (
     <AuthProvider>
       <GamificationProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
+        <DailyStatsProvider>
+          <DailyFoodProvider>
+            <NavigationContainer>
+              <RootNavigator />
+            </NavigationContainer>
+          </DailyFoodProvider>
+        </DailyStatsProvider>
       </GamificationProvider>
     </AuthProvider>
   );

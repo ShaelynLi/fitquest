@@ -47,7 +47,11 @@ import { useAuth } from '../context/AuthContext';
  * - Favorite foods
  */
 export default function FoodSearchScreen({ navigation, route }) {
-  const { mealType = 'breakfast', showBarcodeScanner: initialShowScanner = false } = route?.params || {};
+  const { 
+    mealType = 'breakfast', 
+    showBarcodeScanner: initialShowScanner = false,
+    selectedDate = new Date() 
+  } = route?.params || {};
   const { token } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -267,40 +271,38 @@ export default function FoodSearchScreen({ navigation, route }) {
       const amount = parseFloat(servingAmount) || 1;
       const nutrition = calculateNutrition();
 
-    const foodToAdd = {
+    // Format food data for backend (only include fields that backend expects)
+    const foodLogData = {
       name: selectedFood.name,
-      brand: selectedFood.brand || null,
-      fatsecret_id: selectedFood.fatSecretId || null,
+      brand: selectedFood.brand || '',
       calories: nutrition.calories,
       protein: nutrition.protein,
       carbs: nutrition.carbs,
       fat: nutrition.fat,
-      fiber: nutrition.fiber || 0,
-      sugar: nutrition.sugar || 0,
-      saturated_fat: nutrition.saturated_fat || 0,
-      sodium: nutrition.sodium || 0,
-      cholesterol: nutrition.cholesterol || 0,
-      potassium: nutrition.potassium || 0,
-      serving_amount: amount,
-      serving_unit: "g",
-      measurement_mode: measurementMode,
+      servingSize: `${amount}g`,
+      mealType: mealType,
+      date: selectedDate.toISOString().split('T')[0] // Use selected date
     };
 
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date().toISOString().split('T')[0];
-
-      // Log the meal to backend
-      const response = await api.logMeal(mealType, today, foodToAdd, token);
+      // Log the food to backend
+      const response = await api.logFood(foodLogData, token);
 
       if (response.success) {
         console.log('✅ Meal logged successfully:', response.data);
         setShowFoodDetail(false);
 
-        // Navigate back with success flag to trigger refresh
-        navigation.navigate('Main', {
-          screen: 'FoodTab',
-          params: { mealLogged: true, timestamp: Date.now() }
-        });
+        // Show success message and stay on current screen
+        Alert.alert(
+          'Success', 
+          'Food has been added to your meal!',
+          [{ 
+            text: 'OK',
+            onPress: () => {
+              // Navigate back to FoodTab to refresh the data
+              navigation.goBack();
+            }
+          }]
+        );
       } else {
         Alert.alert('Error', 'Failed to log meal. Please try again.');
       }
