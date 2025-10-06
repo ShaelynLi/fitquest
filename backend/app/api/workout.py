@@ -406,6 +406,48 @@ def test_workout_save():
             "message": f"Failed to save test workout: {e}"
         }
 
+# Get activities for a specific date
+@router.get("/activities/{date}")
+def get_activities_for_date(date: str, user=Depends(get_current_user)):
+    """
+    Get all activities (workouts and food logs) for a specific date
+    Date format: YYYY-MM-DD
+    """
+    try:
+        print(f"📅 Getting activities for date: {date} for user: {user['uid']}")
+        
+        # Get workouts for the date
+        workouts = []
+        sessions = _sessions_col(user["uid"]).stream()
+        
+        for doc in sessions:
+            data = doc.to_dict() or {}
+            if data.get("created_at", "").startswith(date):
+                workouts.append({
+                    "id": doc.id,
+                    "type": "workout",
+                    "workout_type": data.get("workout_type", "run"),
+                    "created_at": data.get("created_at"),
+                    "distance_meters": data.get("distance", {}).get("meters", 0),
+                    "duration_seconds": data.get("duration", {}).get("seconds", 0),
+                    "duration_formatted": data.get("duration", {}).get("formatted", "0s"),
+                    "calories_burned": data.get("calories", {}).get("burned", 0),
+                    "status": data.get("status", "unknown")
+                })
+        
+        print(f"📊 Found {len(workouts)} workouts for {date}")
+        
+        return {
+            "success": True,
+            "date": date,
+            "workouts": workouts,
+            "total_workouts": len(workouts)
+        }
+        
+    except Exception as e:
+        print(f"❌ Failed to get activities for date: {e}")
+        raise HTTPException(500, f"Failed to get activities for date: {e}")
+
 # Clean up old test data
 @router.delete("/cleanup-test-data")
 def cleanup_test_data(user=Depends(get_current_user)):

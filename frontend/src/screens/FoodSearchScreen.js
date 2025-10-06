@@ -50,8 +50,12 @@ export default function FoodSearchScreen({ navigation, route }) {
   const { 
     mealType = 'breakfast', 
     showBarcodeScanner: initialShowScanner = false,
-    selectedDate = new Date() 
+    selectedDate: selectedDateString = null
   } = route?.params || {};
+  
+  // Convert date string back to Date object, or use current date
+  const selectedDate = selectedDateString ? new Date(selectedDateString) : new Date();
+  
   const { token } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');

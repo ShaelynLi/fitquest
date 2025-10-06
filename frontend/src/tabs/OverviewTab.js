@@ -68,6 +68,17 @@ export default function OverviewTab({ navigation }) {
     workoutCount: dailyStats.workoutCount
   };
 
+  // Show loading state if data is still loading
+  if (statsLoading || foodLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading your stats...</Text>
+        </View>
+      </View>
+    );
+  }
+
   const stats = getCollectionStats();
 
   const handleNavigateToCollection = () => {
@@ -535,5 +546,19 @@ const styles = StyleSheet.create({
     fontFamily: typography.body,
     fontWeight: typography.weights.semibold,
     color: colors.white,
+  },
+
+  // Loading State
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+
+  loadingText: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
   },
 });

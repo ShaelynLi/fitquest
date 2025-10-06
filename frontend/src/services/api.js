@@ -479,19 +479,97 @@ class BackendApiService {
 
   /**
    * Get all workout sessions for the current user
-   * @returns {Promise<Array>} List of workout sessions
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} List of workout sessions
    */
-  async getWorkouts() {
-    return await this.makeRequest('/api/workouts/');
+  async getWorkouts(token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Retry mechanism for getting workouts
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🏃 Getting workouts (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest('/api/workouts/', {
+          method: 'GET',
+          headers,
+        });
+        console.log('✅ Workouts retrieved successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Get workouts attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Get workouts failed after 3 attempts');
+    throw lastError;
   }
 
   /**
    * Get a specific workout session by ID
    * @param {string} sessionId - Workout session ID
+   * @param {string} token - Auth token
    * @returns {Promise<Object>} Workout session details
    */
-  async getWorkout(sessionId) {
-    return await this.makeRequest(`/api/workouts/${sessionId}`);
+  async getWorkout(sessionId, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/workouts/${sessionId}`, {
+      method: 'GET',
+      headers,
+    });
+  }
+
+  /**
+   * Get activities for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Activities for the date
+   */
+  async getActivitiesForDate(date, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Retry mechanism for getting activities
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`📅 Getting activities for ${date} (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest(`/api/workouts/activities/${date}`, {
+          method: 'GET',
+          headers,
+        });
+        console.log('✅ Activities retrieved successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Get activities attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Get activities failed after 3 attempts');
+    throw lastError;
   }
 
   /**

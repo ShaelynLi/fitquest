@@ -17,6 +17,7 @@ import HomeScreen from './screens/HomeScreen';
 import RunTab from './tabs/RunTab';
 import PlusScreen from './screens/PlusScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import SummaryScreen from './screens/SummaryScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import PetCollectionScreen from './screens/PetCollectionScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
@@ -117,13 +118,13 @@ function Tabs() {
         }}
       />
       <Tab.Screen
-        name="Profile"
-        component={HistoryScreen}
+        name="Summary"
+        component={SummaryScreen}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: 'Summary',
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
-              name={focused ? 'document-text' : 'document-text-outline'}
+              name={focused ? 'analytics' : 'analytics-outline'}
               size={24}
               color={focused ? colors.textPrimary : colors.gray[400]}
             />

@@ -199,7 +199,7 @@ export default function FoodTab({ navigation, route }) {
   const openFoodSearch = (mealType) => {
     navigation.navigate('FoodSearch', {
       mealType,
-      selectedDate: selectedDate, // Pass the selected date
+      selectedDate: selectedDate.toISOString().split('T')[0], // Pass date as string (YYYY-MM-DD)
     });
   };
 
