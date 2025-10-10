@@ -132,39 +132,6 @@ npm start
 
 ---
 
-## Key Commands
-
-### Backend
-```bash
-cd backend
-source venv/bin/activate
-
-# Development server
-uvicorn app.main:app --reload
-
-# Different port
-uvicorn app.main:app --port 8001 --reload
-
-# View API docs
-open http://localhost:8000/docs
-```
-
-### Frontend
-```bash
-cd frontend
-
-# Start development
-npm start
-
-# Clear cache
-npx expo start --clear
-
-# Run on iOS
-npx expo start --ios
-```
-
----
-
 ## Project Structure
 
 ```

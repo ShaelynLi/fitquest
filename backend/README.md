@@ -142,50 +142,6 @@ backend/
 
 ---
 
-## API Routes
-
-### Core Endpoints
-
-**Health Check**
-```
-GET /health
-```
-
-**Authentication** (`/auth`)
-```
-POST /auth/register      - Register new user
-POST /auth/login         - User login
-GET  /auth/me           - Get current user info
-POST /auth/check-verification - Check email verification
-```
-
-**Users** (`/users`)
-```
-POST  /users/register    - Complete registration with onboarding
-GET   /users/profile     - Get user profile
-PATCH /users/profile     - Update user profile
-```
-
-**Workouts** (`/workouts`)
-```
-POST /workouts/complete           - Save completed workout
-GET  /workouts/                   - List user workouts
-GET  /workouts/{id}              - Get workout details
-GET  /workouts/{id}/trajectory   - Get GPS trajectory
-```
-
-**Foods** (`/foods`)
-```
-GET    /foods/search?q={query}        - Search foods
-GET    /foods/barcode/{barcode}       - Barcode lookup
-GET    /foods/details/{food_id}       - Food details
-POST   /foods/log                     - Log food entry
-GET    /foods/logs?target_date={date} - Get food logs
-DELETE /foods/logs/{log_id}           - Delete food log
-```
-
----
-
 ## Development
 
 ### Running the Server
