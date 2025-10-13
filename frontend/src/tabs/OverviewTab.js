@@ -28,6 +28,7 @@ export default function OverviewTab({ navigation }) {
     blindBoxes,
     runningGoals,
     getCollectionStats,
+    getBlindBoxProgress,
     isLoading
   } = useGamification();
   const {
@@ -80,6 +81,7 @@ export default function OverviewTab({ navigation }) {
   }
 
   const stats = getCollectionStats();
+  const blindBoxProgress = getBlindBoxProgress();
 
   const handleNavigateToCollection = () => {
     navigation.navigate('PetCollection');
@@ -199,6 +201,8 @@ export default function OverviewTab({ navigation }) {
       {/* Rewards & Call to Action */}
       <View style={styles.rewardsCard}>
         <Text style={styles.cardLabel}>Your Rewards</Text>
+        
+        {/* Blind Box Count */}
         <View style={styles.rewardsContent}>
           <View style={styles.rewardsInfo}>
             <View style={styles.rewardsIcon}>
@@ -207,16 +211,46 @@ export default function OverviewTab({ navigation }) {
             <View style={styles.rewardsText}>
               <Text style={styles.rewardsTitle}>{blindBoxes} Blind Boxes</Text>
               <Text style={styles.rewardsSubtitle}>
-                {blindBoxes > 0 ? 'Ready to open' : 'Complete running goals to earn more!'}
+                {blindBoxes > 0 ? 'Ready to open' : 'Keep running to earn more!'}
               </Text>
             </View>
           </View>
           <TouchableOpacity
-            style={styles.openBoxButton}
+            style={[styles.openBoxButton, blindBoxes === 0 && styles.openBoxButtonDisabled]}
             onPress={handleOpenBlindBox}
+            disabled={blindBoxes === 0}
           >
-            <Text style={styles.openBoxButtonText}>Open a Box</Text>
+            <Text style={styles.openBoxButtonText}>Open</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Progress to Next Box */}
+        <View style={styles.progressSection}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressLabel}>Progress to Next Box</Text>
+            <Text style={styles.progressDistance}>
+              {blindBoxProgress.remainingDistance}m remaining
+            </Text>
+          </View>
+          
+          {/* Progress Bar */}
+          <View style={styles.boxProgressBar}>
+            <View
+              style={[
+                styles.boxProgressFill,
+                { width: `${blindBoxProgress.progressPercentage}%` }
+              ]}
+            />
+          </View>
+          
+          <View style={styles.progressFooter}>
+            <Text style={styles.progressInfo}>
+              {blindBoxProgress.progressToNextBox}m / {blindBoxProgress.metersPerBox}m
+            </Text>
+            <Text style={styles.progressPercentage}>
+              {blindBoxProgress.progressPercentage}%
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -541,11 +575,78 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 
+  openBoxButtonDisabled: {
+    backgroundColor: colors.gray[300],
+    opacity: 0.6,
+  },
+
   openBoxButtonText: {
     fontSize: typography.sizes.sm,
     fontFamily: typography.body,
     fontWeight: typography.weights.semibold,
     color: colors.white,
+  },
+
+  // Progress Section
+  progressSection: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[200],
+  },
+
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+
+  progressLabel: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.medium,
+    color: colors.textPrimary,
+  },
+
+  progressDistance: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.semibold,
+    color: colors.purple[600],
+  },
+
+  boxProgressBar: {
+    height: 8,
+    backgroundColor: colors.gray[100],
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: spacing.sm,
+  },
+
+  boxProgressFill: {
+    height: '100%',
+    backgroundColor: colors.purple[500],
+    borderRadius: 4,
+  },
+
+  progressFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  progressInfo: {
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+  },
+
+  progressPercentage: {
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.bold,
+    color: colors.purple[600],
   },
 
   // Loading State

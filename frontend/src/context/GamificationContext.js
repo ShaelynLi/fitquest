@@ -27,13 +27,18 @@ const STORAGE_KEYS = {
   BLIND_BOXES: '@gamification_blind_boxes',
   ACTIVE_COMPANION: '@gamification_active_companion',
   RUNNING_GOALS: '@gamification_running_goals',
-  ACHIEVEMENT_HISTORY: '@gamification_achievements'
+  ACHIEVEMENT_HISTORY: '@gamification_achievements',
+  TOTAL_RUN_DISTANCE: '@gamification_total_run_distance'
 };
+
+// Constants for blind box rewards
+const METERS_PER_BLIND_BOX = 5000; // 5000 meters = 5km per blind box
 
 export const GamificationProvider = ({ children }) => {
   const [userPets, setUserPets] = useState([]); // Array of pet IDs user owns
   const [blindBoxes, setBlindBoxes] = useState(0); // Number of unopened blind boxes
   const [activeCompanion, setActiveCompanion] = useState(null); // Currently selected pet
+  const [totalRunDistance, setTotalRunDistance] = useState(0); // Total distance run in meters
   const [runningGoals, setRunningGoals] = useState({
     daily: { distance: 5000, completed: false }, // 5km daily goal
     weekly: { distance: 25000, completed: false }, // 25km weekly goal
@@ -56,13 +61,15 @@ export const GamificationProvider = ({ children }) => {
         storedBoxes,
         storedCompanion,
         storedGoals,
-        storedAchievements
+        storedAchievements,
+        storedDistance
       ] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.USER_PETS),
         AsyncStorage.getItem(STORAGE_KEYS.BLIND_BOXES),
         AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_COMPANION),
         AsyncStorage.getItem(STORAGE_KEYS.RUNNING_GOALS),
-        AsyncStorage.getItem(STORAGE_KEYS.ACHIEVEMENT_HISTORY)
+        AsyncStorage.getItem(STORAGE_KEYS.ACHIEVEMENT_HISTORY),
+        AsyncStorage.getItem(STORAGE_KEYS.TOTAL_RUN_DISTANCE)
       ]);
 
       if (storedPets) setUserPets(JSON.parse(storedPets));
@@ -70,6 +77,7 @@ export const GamificationProvider = ({ children }) => {
       if (storedCompanion) setActiveCompanion(JSON.parse(storedCompanion));
       if (storedGoals) setRunningGoals(JSON.parse(storedGoals));
       if (storedAchievements) setAchievementHistory(JSON.parse(storedAchievements));
+      if (storedDistance) setTotalRunDistance(parseInt(storedDistance));
 
       // Give starter pet if no pets owned
       if (!storedPets || JSON.parse(storedPets).length === 0) {
@@ -261,6 +269,52 @@ export const GamificationProvider = ({ children }) => {
     return PET_COLLECTION.filter(pet => userPets.includes(pet.id));
   };
 
+  // Add running distance and award blind boxes automatically
+  const addRunningDistance = async (distanceMeters) => {
+    const newTotalDistance = totalRunDistance + distanceMeters;
+    
+    // Calculate how many new blind boxes should be awarded
+    const oldBoxes = Math.floor(totalRunDistance / METERS_PER_BLIND_BOX);
+    const newBoxes = Math.floor(newTotalDistance / METERS_PER_BLIND_BOX);
+    const boxesEarned = newBoxes - oldBoxes;
+    
+    // Update total distance
+    setTotalRunDistance(newTotalDistance);
+    await saveToStorage(STORAGE_KEYS.TOTAL_RUN_DISTANCE, newTotalDistance);
+    
+    // Award blind boxes if earned any
+    const achievements = [];
+    if (boxesEarned > 0) {
+      for (let i = 0; i < boxesEarned; i++) {
+        const achievement = await awardBlindBox(`Ran ${METERS_PER_BLIND_BOX}m`);
+        achievements.push(achievement);
+      }
+    }
+    
+    return {
+      totalDistance: newTotalDistance,
+      boxesEarned,
+      achievements,
+      progressToNextBox: newTotalDistance % METERS_PER_BLIND_BOX,
+      remainingDistance: METERS_PER_BLIND_BOX - (newTotalDistance % METERS_PER_BLIND_BOX)
+    };
+  };
+
+  // Get blind box progress info
+  const getBlindBoxProgress = () => {
+    const progressToNextBox = totalRunDistance % METERS_PER_BLIND_BOX;
+    const remainingDistance = METERS_PER_BLIND_BOX - progressToNextBox;
+    const progressPercentage = (progressToNextBox / METERS_PER_BLIND_BOX) * 100;
+    
+    return {
+      totalDistance: totalRunDistance,
+      progressToNextBox,
+      remainingDistance,
+      progressPercentage: Math.round(progressPercentage),
+      metersPerBox: METERS_PER_BLIND_BOX
+    };
+  };
+
   const value = {
     // State
     userPets,
@@ -268,6 +322,7 @@ export const GamificationProvider = ({ children }) => {
     activeCompanion,
     runningGoals,
     achievementHistory,
+    totalRunDistance,
     isLoading,
 
     // Actions
@@ -276,10 +331,12 @@ export const GamificationProvider = ({ children }) => {
     setActiveCompanionPet,
     updateRunningProgress,
     resetGoals,
+    addRunningDistance,
 
     // Helpers
     getCollectionStats,
     getOwnedPets,
+    getBlindBoxProgress,
 
     // Data
     allPets: PET_COLLECTION,

@@ -42,12 +42,13 @@ export default function RunSummaryScreen() {
     resetRun,
   } = useRun();
 
-  const { updateRunningProgress } = useGamification();
+  const { addRunningDistance } = useGamification();
 
   const [mapRegion, setMapRegion] = useState(null);
   const [mapError, setMapError] = useState(false);
   const [rewardsEarned, setRewardsEarned] = useState([]);
   const [showRewards, setShowRewards] = useState(false);
+  const [blindBoxesEarned, setBlindBoxesEarned] = useState(0);
 
   // Calculate map region based on route points
   useEffect(() => {
@@ -79,10 +80,22 @@ export default function RunSummaryScreen() {
 
   const checkForRewards = async () => {
     try {
-      const achievements = await updateRunningProgress(distance);
-      if (achievements.length > 0) {
-        setRewardsEarned(achievements);
+      const result = await addRunningDistance(distance);
+      
+      // Show celebration if blind boxes earned
+      if (result.boxesEarned > 0) {
+        setBlindBoxesEarned(result.boxesEarned);
+        setRewardsEarned(result.achievements);
         setShowRewards(true);
+        
+        // Show alert for blind boxes earned
+        setTimeout(() => {
+          Alert.alert(
+            '🎉 Blind Box Earned!',
+            `You earned ${result.boxesEarned} blind ${result.boxesEarned === 1 ? 'box' : 'boxes'} for running ${distance}m! Open them from the home screen.`,
+            [{ text: 'Awesome!', style: 'default' }]
+          );
+        }, 500);
       }
     } catch (error) {
       console.error('Failed to check for rewards:', error);
