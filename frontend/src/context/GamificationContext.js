@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PET_COLLECTION, getRandomPetDrop, RARITY_CONFIG } from '../data/pets';
+import { api } from '../services';
+import { auth } from '../config/firebaseConfig';
 
 /**
  * Gamification Context
@@ -28,17 +30,19 @@ const STORAGE_KEYS = {
   ACTIVE_COMPANION: '@gamification_active_companion',
   RUNNING_GOALS: '@gamification_running_goals',
   ACHIEVEMENT_HISTORY: '@gamification_achievements',
-  TOTAL_RUN_DISTANCE: '@gamification_total_run_distance'
+  TOTAL_RUN_DISTANCE: '@gamification_total_run_distance',
+  METERS_PER_BLIND_BOX: '@gamification_meters_per_blind_box'
 };
 
-// Constants for blind box rewards
-const METERS_PER_BLIND_BOX = 5000; // 5000 meters = 5km per blind box
+// Default meters per blind box
+const DEFAULT_METERS_PER_BLIND_BOX = 5000; // 5000 meters = 5km per blind box
 
 export const GamificationProvider = ({ children }) => {
   const [userPets, setUserPets] = useState([]); // Array of pet IDs user owns
   const [blindBoxes, setBlindBoxes] = useState(0); // Number of unopened blind boxes
   const [activeCompanion, setActiveCompanion] = useState(null); // Currently selected pet
   const [totalRunDistance, setTotalRunDistance] = useState(0); // Total distance run in meters
+  const [metersPerBlindBox, setMetersPerBlindBox] = useState(DEFAULT_METERS_PER_BLIND_BOX); // User's custom blind box distance
   const [runningGoals, setRunningGoals] = useState({
     daily: { distance: 5000, completed: false }, // 5km daily goal
     weekly: { distance: 25000, completed: false }, // 25km weekly goal
@@ -62,14 +66,16 @@ export const GamificationProvider = ({ children }) => {
         storedCompanion,
         storedGoals,
         storedAchievements,
-        storedDistance
+        storedDistance,
+        storedMetersPerBox
       ] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.USER_PETS),
         AsyncStorage.getItem(STORAGE_KEYS.BLIND_BOXES),
         AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_COMPANION),
         AsyncStorage.getItem(STORAGE_KEYS.RUNNING_GOALS),
         AsyncStorage.getItem(STORAGE_KEYS.ACHIEVEMENT_HISTORY),
-        AsyncStorage.getItem(STORAGE_KEYS.TOTAL_RUN_DISTANCE)
+        AsyncStorage.getItem(STORAGE_KEYS.TOTAL_RUN_DISTANCE),
+        AsyncStorage.getItem(STORAGE_KEYS.METERS_PER_BLIND_BOX)
       ]);
 
       if (storedPets) setUserPets(JSON.parse(storedPets));
@@ -78,6 +84,24 @@ export const GamificationProvider = ({ children }) => {
       if (storedGoals) setRunningGoals(JSON.parse(storedGoals));
       if (storedAchievements) setAchievementHistory(JSON.parse(storedAchievements));
       if (storedDistance) setTotalRunDistance(parseInt(storedDistance));
+      if (storedMetersPerBox) setMetersPerBlindBox(parseInt(storedMetersPerBox));
+
+      // Load user's blind box distance setting from backend
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const token = await currentUser.getIdToken();
+          const userProfile = await api.getUserProfile(token);
+          if (userProfile && userProfile.metersPerBlindBox) {
+            const meters = userProfile.metersPerBlindBox;
+            setMetersPerBlindBox(meters);
+            await AsyncStorage.setItem(STORAGE_KEYS.METERS_PER_BLIND_BOX, meters.toString());
+            console.log('✅ Loaded user blind box setting:', meters, 'meters');
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to load user blind box setting from backend, using local/default:', error);
+      }
 
       // Give starter pet if no pets owned
       if (!storedPets || JSON.parse(storedPets).length === 0) {
@@ -272,10 +296,11 @@ export const GamificationProvider = ({ children }) => {
   // Add running distance and award blind boxes automatically
   const addRunningDistance = async (distanceMeters) => {
     const newTotalDistance = totalRunDistance + distanceMeters;
+    const currentMetersPerBox = metersPerBlindBox || DEFAULT_METERS_PER_BLIND_BOX;
     
-    // Calculate how many new blind boxes should be awarded
-    const oldBoxes = Math.floor(totalRunDistance / METERS_PER_BLIND_BOX);
-    const newBoxes = Math.floor(newTotalDistance / METERS_PER_BLIND_BOX);
+    // Calculate how many new blind boxes should be awarded using user's setting
+    const oldBoxes = Math.floor(totalRunDistance / currentMetersPerBox);
+    const newBoxes = Math.floor(newTotalDistance / currentMetersPerBox);
     const boxesEarned = newBoxes - oldBoxes;
     
     // Update total distance
@@ -286,7 +311,7 @@ export const GamificationProvider = ({ children }) => {
     const achievements = [];
     if (boxesEarned > 0) {
       for (let i = 0; i < boxesEarned; i++) {
-        const achievement = await awardBlindBox(`Ran ${METERS_PER_BLIND_BOX}m`);
+        const achievement = await awardBlindBox(`Ran ${currentMetersPerBox}m`);
         achievements.push(achievement);
       }
     }
@@ -295,24 +320,55 @@ export const GamificationProvider = ({ children }) => {
       totalDistance: newTotalDistance,
       boxesEarned,
       achievements,
-      progressToNextBox: newTotalDistance % METERS_PER_BLIND_BOX,
-      remainingDistance: METERS_PER_BLIND_BOX - (newTotalDistance % METERS_PER_BLIND_BOX)
+      progressToNextBox: newTotalDistance % currentMetersPerBox,
+      remainingDistance: currentMetersPerBox - (newTotalDistance % currentMetersPerBox)
     };
   };
 
   // Get blind box progress info
   const getBlindBoxProgress = () => {
-    const progressToNextBox = totalRunDistance % METERS_PER_BLIND_BOX;
-    const remainingDistance = METERS_PER_BLIND_BOX - progressToNextBox;
-    const progressPercentage = (progressToNextBox / METERS_PER_BLIND_BOX) * 100;
+    const currentMetersPerBox = metersPerBlindBox || DEFAULT_METERS_PER_BLIND_BOX;
+    const progressToNextBox = totalRunDistance % currentMetersPerBox;
+    const remainingDistance = currentMetersPerBox - progressToNextBox;
+    const progressPercentage = (progressToNextBox / currentMetersPerBox) * 100;
     
     return {
       totalDistance: totalRunDistance,
       progressToNextBox,
       remainingDistance,
       progressPercentage: Math.round(progressPercentage),
-      metersPerBox: METERS_PER_BLIND_BOX
+      metersPerBox: currentMetersPerBox
     };
+  };
+
+  // Update meters per blind box setting
+  const updateMetersPerBlindBox = async (newMeters) => {
+    try {
+      // Validate input
+      if (!newMeters || newMeters <= 0) {
+        throw new Error('Invalid distance value');
+      }
+      if (newMeters % 1000 !== 0) {
+        throw new Error('Distance must be a multiple of 1000 meters');
+      }
+
+      // Update local state
+      setMetersPerBlindBox(newMeters);
+      await AsyncStorage.setItem(STORAGE_KEYS.METERS_PER_BLIND_BOX, newMeters.toString());
+      
+      // Update in backend
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const token = await currentUser.getIdToken();
+        await api.updateUserProfile(token, { metersPerBlindBox: newMeters });
+        console.log('✅ Blind box distance updated:', newMeters, 'meters');
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to update blind box distance:', error);
+      throw error;
+    }
   };
 
   const value = {
@@ -323,6 +379,7 @@ export const GamificationProvider = ({ children }) => {
     runningGoals,
     achievementHistory,
     totalRunDistance,
+    metersPerBlindBox,
     isLoading,
 
     // Actions
@@ -332,6 +389,7 @@ export const GamificationProvider = ({ children }) => {
     updateRunningProgress,
     resetGoals,
     addRunningDistance,
+    updateMetersPerBlindBox,
 
     // Helpers
     getCollectionStats,

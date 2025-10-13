@@ -147,6 +147,7 @@ def get_profile(user=Depends(get_current_user)):
         "heightCm": data.get("heightCm"),
         "weightKg": data.get("weightKg"),
         "healthGoal": data.get("healthGoal"),
+        "metersPerBlindBox": data.get("metersPerBlindBox", 5000),  # Default to 5000m if not set
         "createdAt": data.get("createdAt"),
         "updatedAt": data.get("updatedAt"),
     }
@@ -168,6 +169,15 @@ def update_profile(payload: ProfileUpdate, user=Depends(get_current_user)):
         update_map["heightCm"] = float(payload.height_cm)
     if payload.weight_kg is not None:
         update_map["weightKg"] = float(payload.weight_kg)
+    if payload.metersPerBlindBox is not None:
+        # Validate that it's a multiple of 1000
+        meters = int(payload.metersPerBlindBox)
+        if meters % 1000 != 0:
+            raise HTTPException(
+                status_code=400,
+                detail="metersPerBlindBox must be a multiple of 1000 (e.g., 1000, 2000, 5000)"
+            )
+        update_map["metersPerBlindBox"] = meters
 
     if not update_map:
         return {"updated": False, "message": "No valid fields provided"}

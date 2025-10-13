@@ -585,6 +585,23 @@ class BackendApiService {
   }
 
   /**
+   * Get user profile
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} User profile data
+   */
+  async getUserProfile(token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest('/api/users/profile', {
+      method: 'GET',
+      headers,
+    });
+  }
+
+  /**
    * Update user profile
    * @param {string} token - Auth token
    * @param {Object} profileData - Profile data to update
@@ -596,7 +613,7 @@ class BackendApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    return await this.makeRequest('/api/users/update_profile', {
+    return await this.makeRequest('/api/users/profile', {
       method: 'PATCH',
       headers,
       body: JSON.stringify(profileData),

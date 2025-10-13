@@ -18,3 +18,4 @@ export { default as RunSummaryScreen } from './run/RunSummaryScreen';
 
 // Gamification Components
 export { default as BlindBoxModal } from './gamification/BlindBoxModal';
+export { default as BlindBoxSettingsModal } from './gamification/BlindBoxSettingsModal';

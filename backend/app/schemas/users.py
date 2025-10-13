@@ -72,3 +72,4 @@ class ProfileUpdate(BaseModel):
     birth_date: Optional[date] = None
     height_cm: Optional[PositiveFloat] = None
     weight_kg: Optional[PositiveFloat] = None
+    metersPerBlindBox: Optional[conint(ge=1000, le=50000)] = None  # 1km - 50km, must be multiple of 1000

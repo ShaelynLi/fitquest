@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useGamification } from '../context/GamificationContext';
 import { useDailyStats } from '../context/DailyStatsContext';
 import { useDailyFood } from '../context/DailyFoodContext';
-import BlindBoxModal from '../components/gamification/BlindBoxModal';
+import { BlindBoxModal, BlindBoxSettingsModal } from '../components';
 
 /**
  * OverviewTab Component - Pet Dashboard & Daily Stats
@@ -29,6 +29,8 @@ export default function OverviewTab({ navigation }) {
     runningGoals,
     getCollectionStats,
     getBlindBoxProgress,
+    metersPerBlindBox,
+    updateMetersPerBlindBox,
     isLoading
   } = useGamification();
   const {
@@ -49,6 +51,7 @@ export default function OverviewTab({ navigation }) {
 
   // Modal state
   const [showBlindBoxModal, setShowBlindBoxModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Get real intake data from daily food stats
   const nutrition = getFormattedNutrition();
@@ -89,6 +92,14 @@ export default function OverviewTab({ navigation }) {
 
   const handleOpenBlindBox = () => {
     setShowBlindBoxModal(true);
+  };
+
+  const handleOpenSettings = () => {
+    setShowSettingsModal(true);
+  };
+
+  const handleSaveSettings = async (newDistance) => {
+    await updateMetersPerBlindBox(newDistance);
   };
 
   return (
@@ -200,7 +211,15 @@ export default function OverviewTab({ navigation }) {
 
       {/* Rewards & Call to Action */}
       <View style={styles.rewardsCard}>
-        <Text style={styles.cardLabel}>Your Rewards</Text>
+        <View style={styles.rewardsHeader}>
+          <Text style={styles.cardLabel}>Your Rewards</Text>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={handleOpenSettings}
+          >
+            <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
         
         {/* Blind Box Count */}
         <View style={styles.rewardsContent}>
@@ -258,6 +277,14 @@ export default function OverviewTab({ navigation }) {
       <BlindBoxModal
         visible={showBlindBoxModal}
         onClose={() => setShowBlindBoxModal(false)}
+      />
+
+      {/* Settings Modal */}
+      <BlindBoxSettingsModal
+        visible={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        currentDistance={metersPerBlindBox || 5000}
+        onSave={handleSaveSettings}
       />
     </ScrollView>
   );
@@ -519,6 +546,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+
+  rewardsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+
+  settingsButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.gray[100],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   rewardsContent: {
