@@ -64,12 +64,20 @@ const BACKEND_BASE_URL = getBackendUrl();
 class BackendApiService {
   constructor() {
     this.baseUrl = BACKEND_BASE_URL;
+    this.tokenRefreshCallback = null;
   }
 
   /**
-   * Make API request to backend
+   * Set callback for token refresh (called by AuthContext)
    */
-  async makeRequest(endpoint, options = {}) {
+  setTokenRefreshCallback(callback) {
+    this.tokenRefreshCallback = callback;
+  }
+
+  /**
+   * Make API request to backend with automatic token refresh on 401
+   */
+  async makeRequest(endpoint, options = {}, retryCount = 0) {
     const url = `${this.baseUrl}${endpoint}`;
 
     const headers = {
@@ -110,6 +118,32 @@ class BackendApiService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Backend API error response:', errorText);
+        
+        // Handle 401 Unauthorized - token expired
+        if (response.status === 401 && retryCount === 0 && this.tokenRefreshCallback) {
+          console.log('🔄 Token expired, attempting to refresh...');
+          try {
+            // Get fresh token from callback
+            const freshToken = await this.tokenRefreshCallback();
+            
+            if (freshToken) {
+              console.log('✅ Got fresh token, retrying request...');
+              // Retry the request with fresh token
+              const newOptions = {
+                ...options,
+                headers: {
+                  ...options.headers,
+                  'Authorization': `Bearer ${freshToken}`,
+                },
+              };
+              return await this.makeRequest(endpoint, newOptions, retryCount + 1);
+            }
+          } catch (refreshError) {
+            console.error('❌ Token refresh failed:', refreshError);
+            // Fall through to throw the original 401 error
+          }
+        }
+        
         throw new Error(`Backend API error ${response.status}: ${errorText}`);
       }
 
