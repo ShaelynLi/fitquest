@@ -39,8 +39,8 @@ export default function PlusScreen({ navigation }) {
       color: colors.pink[100],
       iconColor: colors.pink[600],
       onPress: () => {
-        // Navigate to Home screen and switch to Run tab
-        navigation.navigate('Main', { screen: 'Home', params: { initialTab: 'Run' } });
+        // Navigate to Home screen's Run tab
+        navigation.navigate('Home', { screen: 'Run' });
       }
     }
   ];
