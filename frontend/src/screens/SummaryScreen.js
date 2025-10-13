@@ -46,6 +46,9 @@ export default function SummaryScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState(today.date);
   const [selectedMonth, setSelectedMonth] = useState(today.month);
   const [selectedYear, setSelectedYear] = useState(today.year);
+  const [viewMonth, setViewMonth] = useState(today.month); // Month being viewed in calendar
+  const [viewYear, setViewYear] = useState(today.year); // Year being viewed in calendar
+  const [weekOffset, setWeekOffset] = useState(0); // Offset from selected week (0 = selected week, 1 = next week, -1 = previous week)
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [activities, setActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -177,10 +180,13 @@ export default function SummaryScreen({ navigation }) {
     return false; // Placeholder
   };
 
-  // Generate current week dates
+  // Generate current week dates based on selected date and week offset
   const generateCurrentWeek = () => {
     const today = new Date();
     const currentDate = new Date(selectedYear, selectedMonth, selectedDate);
+    // Apply week offset (each offset = 7 days)
+    currentDate.setDate(currentDate.getDate() + (weekOffset * 7));
+    
     const startOfWeek = new Date(currentDate);
     startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
     
@@ -227,30 +233,14 @@ export default function SummaryScreen({ navigation }) {
     return weeks;
   };
 
-  // Navigate to previous week
+  // Navigate to previous week (only changes the view, not the selected date)
   const goToPreviousWeek = () => {
-    const currentDate = new Date(selectedYear, selectedMonth, selectedDate);
-    currentDate.setDate(currentDate.getDate() - 7);
-    setSelectedYear(currentDate.getFullYear());
-    setSelectedMonth(currentDate.getMonth());
-    setSelectedDate(currentDate.getDate());
-    
-    // Load activities for the new date
-    const dateStr = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${currentDate.getDate().toString().padStart(2, '0')}`;
-    loadActivitiesForDate(dateStr);
+    setWeekOffset(weekOffset - 1);
   };
 
-  // Navigate to next week
+  // Navigate to next week (only changes the view, not the selected date)
   const goToNextWeek = () => {
-    const currentDate = new Date(selectedYear, selectedMonth, selectedDate);
-    currentDate.setDate(currentDate.getDate() + 7);
-    setSelectedYear(currentDate.getFullYear());
-    setSelectedMonth(currentDate.getMonth());
-    setSelectedDate(currentDate.getDate());
-    
-    // Load activities for the new date
-    const dateStr = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${currentDate.getDate().toString().padStart(2, '0')}`;
-    loadActivitiesForDate(dateStr);
+    setWeekOffset(weekOffset + 1);
   };
 
   // Pan responder for swipe gestures
@@ -278,21 +268,21 @@ export default function SummaryScreen({ navigation }) {
 
   // Navigate to previous month (for full calendar)
   const goToPreviousMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedMonth(11);
-      setSelectedYear(selectedYear - 1);
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(viewYear - 1);
     } else {
-      setSelectedMonth(selectedMonth - 1);
+      setViewMonth(viewMonth - 1);
     }
   };
 
   // Navigate to next month (for full calendar)
   const goToNextMonth = () => {
-    if (selectedMonth === 11) {
-      setSelectedMonth(0);
-      setSelectedYear(selectedYear + 1);
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(viewYear + 1);
     } else {
-      setSelectedMonth(selectedMonth + 1);
+      setViewMonth(viewMonth + 1);
     }
   };
 
@@ -308,19 +298,28 @@ export default function SummaryScreen({ navigation }) {
     // Create unique key combining week and date indices
     const uniqueKey = `date-${weekIndex}-${dateIndex}-${dateObj.date}-${dateObj.month}-${dateObj.year}`;
 
+    // Special case: when today is also the selected date
+    const isTodayAndSelected = isToday && isSelected;
+    
     return (
       <TouchableOpacity
         key={uniqueKey}
         style={[
           styles.calendarDateContainer,
-          isSelected && styles.calendarDateSelected,
+          isSelected && !isToday && styles.calendarDateSelected,
           isToday && styles.calendarDateToday,
+          isTodayAndSelected && styles.calendarDateTodaySelected,
         ]}
         onPress={() => {
           if (isCurrentMonth) {
             setSelectedDate(dateObj.date);
             setSelectedMonth(dateObj.month);
             setSelectedYear(dateObj.year);
+            // Also update view month/year to match the selected date
+            setViewMonth(dateObj.month);
+            setViewYear(dateObj.year);
+            // Reset week offset when selecting a new date
+            setWeekOffset(0);
             const dateStr = `${dateObj.year}-${(dateObj.month + 1).toString().padStart(2, '0')}-${dateObj.date.toString().padStart(2, '0')}`;
             loadActivitiesForDate(dateStr);
             // Close the calendar modal after selecting a date
@@ -332,7 +331,7 @@ export default function SummaryScreen({ navigation }) {
           style={[
             styles.calendarDateText,
             !isCurrentMonth && styles.calendarDateTextInactive,
-            isSelected && styles.calendarDateTextSelected,
+            isSelected && !isToday && styles.calendarDateTextSelected,
             isToday && styles.calendarDateTextToday,
           ]}
         >
@@ -368,7 +367,7 @@ export default function SummaryScreen({ navigation }) {
 
   // Render full calendar modal
   const renderFullCalendar = () => {
-    const weeks = generateCalendarWeeks(selectedYear, selectedMonth);
+    const weeks = generateCalendarWeeks(viewYear, viewMonth);
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
@@ -386,7 +385,7 @@ export default function SummaryScreen({ navigation }) {
           </TouchableOpacity>
           
           <Text style={styles.fullCalendarTitle}>
-            {monthNames[selectedMonth]} {selectedYear}
+            {monthNames[viewMonth]} {viewYear}
           </Text>
           
           <TouchableOpacity 
@@ -472,7 +471,12 @@ export default function SummaryScreen({ navigation }) {
             <Text style={styles.dateTitle}>{getFormattedDate()}</Text>
             <TouchableOpacity
               style={styles.calendarButton}
-              onPress={() => setShowCalendarModal(true)}
+              onPress={() => {
+                // Reset view to selected date's month when opening calendar
+                setViewMonth(selectedMonth);
+                setViewYear(selectedYear);
+                setShowCalendarModal(true);
+              }}
             >
               <Ionicons name="calendar-outline" size={20} color={colors.blue[500]} />
             </TouchableOpacity>
@@ -692,24 +696,30 @@ const styles = StyleSheet.create({
   },
 
   calendarDateTextSelected: {
-    color: colors.blue[500],
-    fontWeight: typography.weights.semibold,
+    color: colors.blue[600],
+    fontWeight: typography.weights.bold,
   },
 
   calendarDateTextToday: {
-    color: colors.blue[500],
-    fontWeight: typography.weights.semibold,
+    color: colors.white,
+    fontWeight: typography.weights.bold,
   },
 
   calendarDateSelected: {
-    backgroundColor: colors.blue[50],
+    backgroundColor: colors.blue[100],
     borderWidth: 2,
     borderColor: colors.blue[500],
   },
 
   calendarDateToday: {
+    backgroundColor: colors.blue[500],
+    borderWidth: 0,
+  },
+
+  calendarDateTodaySelected: {
+    backgroundColor: colors.blue[600],
     borderWidth: 2,
-    borderColor: colors.blue[500],
+    borderColor: colors.blue[300],
   },
 
   activityIndicator: {
