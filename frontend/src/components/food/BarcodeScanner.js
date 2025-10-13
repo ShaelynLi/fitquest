@@ -148,10 +148,14 @@ export default function BarcodeScanner({ onBarcodeScanned, onClose, isVisible })
 
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
-          {scanned && (
+          {scanned ? (
             <TouchableOpacity style={styles.retryButton} onPress={resetScanner}>
               <Ionicons name="refresh" size={20} color={colors.white} />
               <Text style={styles.retryButtonText}>Scan Again</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -303,6 +307,20 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     fontFamily: typography.body,
     fontWeight: typography.weights.medium,
+    color: colors.white,
+  },
+  cancelButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: colors.white,
+  },
+  cancelButtonText: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.semibold,
     color: colors.white,
   },
 
