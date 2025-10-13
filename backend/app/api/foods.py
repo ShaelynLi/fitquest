@@ -112,6 +112,31 @@ async def get_food_details(food_id: str):
         )
 
 
+@router.get("/image/{food_id}", response_model=Dict[str, Any])
+async def get_food_image(food_id: str):
+    """
+    Get food image URL for a specific food
+
+    Args:
+        food_id: FatSecret food ID
+
+    Returns:
+        Food image URL if available
+    """
+    try:
+        image_url = await fatsecret_service.get_food_image(food_id)
+        return {
+            "success": True,
+            "food_id": food_id,
+            "image_url": image_url
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get food image: {str(e)}"
+        )
+
+
 @router.get("/categories", response_model=FoodCategoriesResponse)
 async def get_food_categories():
     """

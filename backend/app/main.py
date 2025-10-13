@@ -46,8 +46,10 @@ async def health_check():
     auth_ok = False
     auth_error = None
     try:
-        iterator = auth_client.list_users(page_size=1)  # type: ignore[attr-defined]
-        next(iterator.iterate_all(), None)
+        # Test auth client with a simple operation
+        users_page = auth_client.list_users(max_results=1)  # type: ignore[attr-defined]
+        # Just check if we can get the page object
+        _ = users_page.users
         auth_ok = True
     except Exception as e:
         auth_error = str(e)
@@ -57,7 +59,8 @@ async def health_check():
     firestore_error = None
     try:
         if db is not None:
-            _ = db.collection("__health__").document("_ping").get()
+            # Use a valid collection name for health check
+            _ = db.collection("health_check").document("ping").get()
             firestore_ok = True
         else:
             firestore_error = "Firestore client is None"

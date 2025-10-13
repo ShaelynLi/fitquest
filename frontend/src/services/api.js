@@ -114,8 +114,6 @@ class BackendApiService {
       }
 
       const data = await response.json();
-      console.log('Backend API response:', data);
-
       return data;
     } catch (error) {
       console.error('Backend API request failed:', error);
@@ -207,6 +205,22 @@ class BackendApiService {
       return response.data;
     } else {
       throw new Error('Failed to get food categories');
+    }
+  }
+
+  /**
+   * Get food image URL for a specific food
+   *
+   * @param {string} foodId - FatSecret food ID
+   * @returns {Promise<string|null>} Food image URL or null if not available
+   */
+  async getFoodImage(foodId) {
+    try {
+      const response = await this.makeRequest(`/api/foods/image/${foodId}`);
+      return response.image_url;
+    } catch (error) {
+      console.warn(`Failed to get image for food ${foodId}:`, error);
+      return null;
     }
   }
 
@@ -371,95 +385,191 @@ class BackendApiService {
       servingUnit: food.serving_unit || 'serving',
       verified: Boolean(food.verified),
       fatSecretId: food.fatsecret_id || null,
+      serving: food.serving || null, // Include the serving data with serving_id
     };
   }
 
   // ============ WORKOUT API METHODS ============
 
   /**
-   * Start a new workout session
+   * Start a new workout session (DEPRECATED - use completeWorkout instead)
    * @param {string} workoutType - Type of workout (e.g., 'run')
    * @param {number} startTimeMs - Start timestamp in milliseconds
    * @param {string} token - Auth token (optional, for authenticated users)
    * @returns {Promise<Object>} Workout session response
    */
   async startWorkout(workoutType = 'run', startTimeMs = Date.now(), token = null) {
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    return await this.makeRequest('/api/workouts/start', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        workout_type: workoutType,
-        start_time_ms: startTimeMs,
-      }),
-    });
+    console.warn('⚠️ startWorkout is deprecated. Use completeWorkout instead.');
+    // This method is kept for backward compatibility but should not be used
+    return { success: false, message: 'startWorkout is deprecated. Use completeWorkout instead.' };
   }
 
   /**
-   * Add GPS points to an active workout session
+   * Add GPS points to an active workout session with retry mechanism
    * @param {string} sessionId - Workout session ID
    * @param {Array} points - Array of GPS points with lat, lng, t_ms
    * @param {string} token - Auth token (optional, for authenticated users)
    * @returns {Promise<Object>} Response with added points count
    */
   async addWorkoutPoints(sessionId, points, token = null) {
+    console.warn('⚠️ addWorkoutPoints is deprecated. Use completeWorkout instead.');
+    // This method is kept for backward compatibility but should not be used
+    return { success: false, message: 'addWorkoutPoints is deprecated. Use completeWorkout instead.' };
+  }
+
+  /**
+   * Complete a workout session with full data from frontend
+   * @param {Object} workoutData - Complete workout data
+   * @param {string} token - Auth token (optional, for authenticated users)
+   * @returns {Promise<Object>} Completion response
+   */
+  async completeWorkout(workoutData, token = null) {
     const headers = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest('/api/workouts/add-points', {
+    const requestData = {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        session_id: sessionId,
-        points: points,
-      }),
-    });
+      body: JSON.stringify(workoutData),
+    };
+
+    // Retry mechanism for workout completion
+    const maxRetries = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🏁 Attempting to complete workout (attempt ${attempt}/${maxRetries})`);
+        console.log(`📊 Workout data: ${workoutData.workout_type}, GPS points: ${workoutData.gps_points?.length || 0}`);
+        const result = await this.makeRequest('/api/workouts/complete', requestData);
+        console.log(`✅ Workout completed successfully on attempt ${attempt}`);
+        return result;
+      } catch (error) {
+        lastError = error;
+        console.log(`❌ Workout completion failed on attempt ${attempt}:`, error.message);
+        
+        if (attempt < maxRetries) {
+          // Wait before retry (exponential backoff)
+          const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // All retries failed
+    console.error(`❌ Workout completion failed after ${maxRetries} attempts`);
+    throw lastError;
   }
 
   /**
-   * Finish a workout session
+   * Finish a workout session with retry mechanism (legacy method)
    * @param {string} sessionId - Workout session ID
    * @param {number} endTimeMs - End timestamp in milliseconds
    * @param {string} token - Auth token (optional, for authenticated users)
    * @returns {Promise<Object>} Final workout session data
    */
   async finishWorkout(sessionId, endTimeMs = Date.now(), token = null) {
+    console.warn('⚠️ finishWorkout is deprecated. Use completeWorkout instead.');
+    // This method is kept for backward compatibility but should not be used
+    return { success: false, message: 'finishWorkout is deprecated. Use completeWorkout instead.' };
+  }
+
+  /**
+   * Get all workout sessions for the current user
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} List of workout sessions
+   */
+  async getWorkouts(token = null) {
     const headers = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest('/api/workouts/finish', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        session_id: sessionId,
-        end_time_ms: endTimeMs,
-      }),
-    });
-  }
-
-  /**
-   * Get all workout sessions for the current user
-   * @returns {Promise<Array>} List of workout sessions
-   */
-  async getWorkouts() {
-    return await this.makeRequest('/api/workouts/');
+    // Retry mechanism for getting workouts
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🏃 Getting workouts (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest('/api/workouts/', {
+          method: 'GET',
+          headers,
+        });
+        console.log('✅ Workouts retrieved successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Get workouts attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Get workouts failed after 3 attempts');
+    throw lastError;
   }
 
   /**
    * Get a specific workout session by ID
    * @param {string} sessionId - Workout session ID
+   * @param {string} token - Auth token
    * @returns {Promise<Object>} Workout session details
    */
-  async getWorkout(sessionId) {
-    return await this.makeRequest(`/api/workouts/${sessionId}`);
+  async getWorkout(sessionId, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/workouts/${sessionId}`, {
+      method: 'GET',
+      headers,
+    });
+  }
+
+  /**
+   * Get activities for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Activities for the date
+   */
+  async getActivitiesForDate(date, token = null) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Retry mechanism for getting activities
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`📅 Getting activities for ${date} (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest(`/api/workouts/activities/${date}`, {
+          method: 'GET',
+          headers,
+        });
+        console.log('✅ Activities retrieved successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Get activities attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Get activities failed after 3 attempts');
+    throw lastError;
   }
 
   /**
@@ -507,10 +617,107 @@ class BackendApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await this.makeRequest('/api/foods/log', {
-      method: 'POST',
+    // Retry mechanism for food logging
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🍎 Logging food (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest('/api/foods/log', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(foodData),
+        });
+        console.log('✅ Food logged successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Food logging attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Food logging failed after 3 attempts');
+    throw lastError;
+  }
+
+
+  /**
+   * Get meals for a specific date (using foods endpoint)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Meals response
+   */
+  async getMeals(date, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Retry mechanism for getting meals
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`📋 Getting meals for ${date} (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest(`/api/foods/logs?target_date=${date}`, {
+          method: 'GET',
+          headers,
+        });
+        console.log('✅ Meals retrieved successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Get meals attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Get meals failed after 3 attempts');
+    throw lastError;
+  }
+
+  /**
+   * Get daily nutrition summary
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Nutrition summary response
+   */
+  async getNutritionSummary(date, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/nutrition?date=${date}`, {
+      method: 'GET',
       headers,
-      body: JSON.stringify(foodData),
+    });
+  }
+
+  /**
+   * Delete a meal entry
+   * @param {string} mealId - ID of the meal to delete
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Delete response
+   */
+  async deleteMeal(mealId, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/meals/${mealId}`, {
+      method: 'DELETE',
+      headers,
     });
   }
 

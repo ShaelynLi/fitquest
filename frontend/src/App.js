@@ -6,6 +6,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GamificationProvider } from './context/GamificationContext';
+import { DailyStatsProvider } from './context/DailyStatsContext';
+import { DailyFoodProvider } from './context/DailyFoodContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
@@ -15,8 +17,8 @@ import HomeScreen from './screens/HomeScreen';
 import RunTab from './tabs/RunTab';
 import PlusScreen from './screens/PlusScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import SummaryScreen from './screens/SummaryScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import PokedexScreen from './screens/PokedexScreen';
 import PetCollectionScreen from './screens/PetCollectionScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
 import FoodTab from './tabs/FoodTab';
@@ -116,13 +118,13 @@ function Tabs() {
         }}
       />
       <Tab.Screen
-        name="Profile"
-        component={HistoryScreen}
+        name="Summary"
+        component={SummaryScreen}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: 'Summary',
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
-              name={focused ? 'document-text' : 'document-text-outline'}
+              name={focused ? 'analytics' : 'analytics-outline'}
               size={24}
               color={focused ? colors.textPrimary : colors.gray[400]}
             />
@@ -138,22 +140,24 @@ function Tabs() {
 }
 
 function RootNavigator() {
-  const { loading } = useAuth();
+  // Bypass authentication for development - always show main app
+  const BYPASS_AUTH = false;
+  
+  const { user, loading } = useAuth();
   
   if (loading) return null;
   
   return (
-    <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName={BYPASS_AUTH || user ? "Main" : "Welcome"} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
       <Stack.Screen name="Main" component={Tabs} />
-      <Stack.Screen name="Pokedex" component={PokedexScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="PetCollection" component={PetCollectionScreen} />
       <Stack.Screen name="FoodSearch" component={FoodSearchScreen} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
     </Stack.Navigator>
   );
 }
@@ -188,9 +192,13 @@ export default function App() {
   return (
     <AuthProvider>
       <GamificationProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
+        <DailyStatsProvider>
+          <DailyFoodProvider>
+            <NavigationContainer>
+              <RootNavigator />
+            </NavigationContainer>
+          </DailyFoodProvider>
+        </DailyStatsProvider>
       </GamificationProvider>
     </AuthProvider>
   );

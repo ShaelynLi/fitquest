@@ -24,6 +24,7 @@ class FoodItem(BaseModel):
     serving_unit: str = Field(..., description="Serving unit")
     verified: bool = Field(False, description="Whether nutrition data is verified")
     fatsecret_id: Optional[str] = Field(None, description="FatSecret food ID")
+    serving: Optional[Dict[str, Any]] = Field(None, description="Selected serving information with serving_id")
 
 
 class FoodSearchResponse(BaseModel):

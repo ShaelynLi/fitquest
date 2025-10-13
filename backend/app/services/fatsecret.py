@@ -72,6 +72,14 @@ class FatSecretService:
 
             json_response = response.json()
 
+            # Print the raw response for debugging
+            print("=" * 80)
+            print("🔍 RAW FATSECRET API RESPONSE:")
+            print("=" * 80)
+            import json
+            print(json.dumps(json_response, indent=2))
+            print("=" * 80)
+
             # Check for FatSecret API errors
             if "error" in json_response:
                 error_code = json_response["error"].get("code")
@@ -278,6 +286,15 @@ class FatSecretService:
 
             return self._transform_food_details(json_response)
 
+    async def get_food_image(self, food_id: str) -> Optional[str]:
+        """Get food image URL for a specific food ID"""
+        try:
+            food_details = await self.get_food_details(food_id)
+            image_url = food_details.get("image_url")
+            return image_url
+        except Exception as e:
+            return None
+
     def _transform_search_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Transform FatSecret search response to our app format"""
         if not response:
@@ -295,6 +312,7 @@ class FatSecretService:
             food_list = [food_list]
         elif not isinstance(food_list, list):
             food_list = []
+
 
         transformed_foods = [self._transform_food_item(food) for food in food_list]
 
@@ -333,7 +351,7 @@ class FatSecretService:
             name = food_name
             brand = "Generic"
 
-        # Get nutrition from first serving if available
+        # Get all serving options
         servings = food.get("servings", {})
         serving_list = servings.get("serving", [])
 
@@ -343,19 +361,97 @@ class FatSecretService:
         elif not isinstance(serving_list, list):
             serving_list = []
 
-        # Use first serving for nutrition data
-        primary_serving = serving_list[0] if serving_list else {}
+        # Find the best serving to use (prefer 100g, then any gram-based serving, then first)
+        best_serving = None
+        hundred_gram_serving = None
+        gram_servings = []
+        
+        for serving in serving_list:
+            metric_amount = float(serving.get("metric_serving_amount", 0))
+            metric_unit = serving.get("metric_serving_unit", "").lower()
+            
+            if metric_unit == "g":
+                if metric_amount == 100:
+                    hundred_gram_serving = serving
+                else:
+                    gram_servings.append(serving)
+        
+        # Choose the best serving: 100g > any gram serving > first serving
+        if hundred_gram_serving:
+            best_serving = hundred_gram_serving
+        elif gram_servings:
+            best_serving = gram_servings[0]
+        elif serving_list:
+            best_serving = serving_list[0]
+        
+        # Transform the best serving
+        if best_serving:
+            serving_data = {
+                "serving_id": best_serving.get("serving_id"),
+                "description": best_serving.get("serving_description", "1 serving"),
+                "metric_amount": float(best_serving.get("metric_serving_amount", 100)),
+                "metric_unit": best_serving.get("metric_serving_unit", "g"),
+                "number_of_units": float(best_serving.get("number_of_units", 1)),
+                "measurement_description": best_serving.get("measurement_description", "serving"),
+                "calories": float(best_serving.get("calories", 0)),
+                "protein": float(best_serving.get("protein", 0)),
+                "carbs": float(best_serving.get("carbohydrate", 0)),
+                "fat": float(best_serving.get("fat", 0)),
+                "fiber": float(best_serving.get("fiber", 0)),
+                "sugar": float(best_serving.get("sugar", 0)),
+                "saturated_fat": float(best_serving.get("saturated_fat", 0)),
+                "sodium": float(best_serving.get("sodium", 0)),
+                "cholesterol": float(best_serving.get("cholesterol", 0)),
+                "potassium": float(best_serving.get("potassium", 0)),
+            }
+            
+            # Use the best serving for primary nutrition data
+            calories = serving_data["calories"]
+            protein = serving_data["protein"]
+            carbs = serving_data["carbs"]
+            fat = serving_data["fat"]
+            fiber = serving_data["fiber"]
+            sugar = serving_data["sugar"]
+            serving_desc = serving_data["description"]
+        else:
+            # Fallback if no servings available
+            serving_data = {
+                "serving_id": None,
+                "description": "100g",
+                "metric_amount": 100.0,
+                "metric_unit": "g",
+                "number_of_units": 1.0,
+                "measurement_description": "100 grams",
+                "calories": 0.0,
+                "protein": 0.0,
+                "carbs": 0.0,
+                "fat": 0.0,
+                "fiber": 0.0,
+                "sugar": 0.0,
+                "saturated_fat": 0.0,
+                "sodium": 0.0,
+                "cholesterol": 0.0,
+                "potassium": 0.0,
+            }
+            calories = protein = carbs = fat = fiber = sugar = 0.0
+            serving_desc = "100g"
 
-        # Extract nutrition values from serving
-        calories = float(primary_serving.get("calories", 0))
-        protein = float(primary_serving.get("protein", 0))
-        carbs = float(primary_serving.get("carbohydrate", 0))
-        fat = float(primary_serving.get("fat", 0))
-        fiber = float(primary_serving.get("fiber", 0))
-        sugar = float(primary_serving.get("sugar", 0))
-
-        # Get serving description
-        serving_desc = primary_serving.get("serving_description", "100g")
+        # Get food images if available
+        food_images = food.get("food_images", {})
+        image_list = food_images.get("food_image", [])
+        if isinstance(image_list, dict):
+            image_list = [image_list]
+        
+        # Get the first available image (image_type "1" is the standard image)
+        food_image_url = None
+        for img in image_list:
+            if img.get("image_type") == "1":  # "1" is the standard image type
+                food_image_url = img.get("image_url")
+                break
+        
+        # If no type "1" image, get any available image
+        if not food_image_url and image_list:
+            food_image_url = image_list[0].get("image_url")
 
         return {
             "id": food_id,
@@ -372,6 +468,10 @@ class FatSecretService:
             "serving_unit": "grams",
             "verified": True,
             "fatsecret_id": food.get("food_id"),
+            "food_type": food.get("food_type", "Generic"),
+            "food_url": food.get("food_url"),
+            "image_url": food_image_url,
+            "serving": serving_data,  # Single best serving
         }
 
 
@@ -415,7 +515,8 @@ class FatSecretService:
     def _transform_food_details(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Transform detailed food response to our app format"""
         food = response.get("food", {})
-        return self._transform_food_item(food)
+        transformed = self._transform_food_item(food)
+        return transformed
 
 
 

@@ -145,12 +145,18 @@ export default function ActiveRunScreen() {
     return (meters / 1000).toFixed(2);
   };
 
-  // Format pace as MM:SS per km
+  // Format pace as MM:SS per km with fixed width
   const formatPace = (minutesPerKm) => {
-    if (minutesPerKm === 0 || !isFinite(minutesPerKm)) return '--:--';
-    const minutes = Math.floor(minutesPerKm);
-    const seconds = Math.round((minutesPerKm - minutes) * 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    if (minutesPerKm === 0 || !isFinite(minutesPerKm) || minutesPerKm < 0) return '--:--';
+    
+    // Apply reasonable limits to prevent extreme values
+    const clampedPace = Math.max(1, Math.min(99, minutesPerKm));
+    
+    const minutes = Math.floor(clampedPace);
+    const seconds = Math.round((clampedPace - minutes) * 60);
+    
+    // Ensure consistent formatting with leading zeros
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   // Calculate goal progress
@@ -759,6 +765,9 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
+    minHeight: 40, // Fixed height to prevent layout shifts
+    textAlign: 'center',
+    width: '100%',
   },
   metricLabel: {
     fontSize: typography.sizes.md,
@@ -814,6 +823,9 @@ const styles = StyleSheet.create({
     fontFamily: typography.body,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
+    minHeight: 24, // Fixed height for small metrics
+    textAlign: 'center',
+    width: '100%',
   },
   smallMetricLabel: {
     fontSize: typography.sizes.xs,

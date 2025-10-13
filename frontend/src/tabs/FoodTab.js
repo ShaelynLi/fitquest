@@ -10,12 +10,14 @@ import {
   TextInput,
   Alert,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { colors, spacing, typography, globalStyles } from '../theme';
 import { api } from '../services';
 import { useAuth } from '../context/AuthContext';
+import { useDailyFood } from '../context/DailyFoodContext';
 
 /**
  * FoodTab Component - Enhanced Food Log Screen
@@ -39,6 +41,13 @@ import { useAuth } from '../context/AuthContext';
  */
 export default function FoodTab({ navigation, route }) {
   const { token } = useAuth();
+  const { 
+    dailyFood, 
+    loadDailyFood, 
+    addFoodToDaily, 
+    removeFoodFromDaily,
+    isLoading: foodLoading 
+  } = useDailyFood();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
   
@@ -53,15 +62,11 @@ export default function FoodTab({ navigation, route }) {
     }
     return dates;
   };
-  
+
   const calendarDates = generateCalendarDates();
 
-  const [meals, setMeals] = useState({
-    breakfast: [],
-    lunch: [],
-    dinner: [],
-    snacks: [],
-  });
+  // Use dailyFood.meals from context instead of local state
+  const meals = dailyFood.meals;
   const [addMealModalVisible, setAddMealModalVisible] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState('breakfast');
   const [foodName, setFoodName] = useState('');
@@ -89,10 +94,10 @@ export default function FoodTab({ navigation, route }) {
 
     return allFoods.reduce(
       (totals, food) => ({
-        calories: totals.calories + (food.calories || 0),
-        protein: totals.protein + (food.protein || 0),
-        carbs: totals.carbs + (food.carbs || 0),
-        fat: totals.fat + (food.fat || 0),
+        calories: totals.calories + (food.food?.calories || food.calories || 0),
+        protein: totals.protein + (food.food?.protein || food.protein || 0),
+        carbs: totals.carbs + (food.food?.carbs || food.carbs || 0),
+        fat: totals.fat + (food.food?.fat || food.fat || 0),
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );
@@ -113,28 +118,38 @@ export default function FoodTab({ navigation, route }) {
         handleFoodSelected(selectedFood, mealType);
         navigation.setParams({ selectedFood: undefined, mealType: undefined });
       }
-    }, [route.params?.selectedFood, route.params?.mealType])
+      
+      // Handle meal logged refresh
+      if (route.params?.mealLogged) {
+        console.log('🔄 Meal logged, refreshing data...');
+        loadFoodLogs();
+        navigation.setParams({ mealLogged: undefined, timestamp: undefined });
+      }
+    }, [route.params?.selectedFood, route.params?.mealType, route.params?.mealLogged])
   );
 
-  // Load food logs from Firebase
+  // Refresh data when screen comes into focus (e.g., returning from FoodSearchScreen)
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 FoodTab focused, refreshing data...');
+      loadFoodLogs();
+    }, [])
+  );
+
+  // Load meals from backend
   const loadFoodLogs = async () => {
     if (!token) return;
     
     try {
       setIsLoading(true);
       const dateStr = selectedDate.toISOString().split('T')[0];
-      console.log('🍎 Loading food logs for date:', dateStr);
+      console.log('🍎 Loading meals for date:', dateStr);
       
-      const response = await api.getFoodLogs(dateStr, token);
-      console.log('📊 Food logs response:', response);
-      
-      if (response.success) {
-        setMeals(response.meals);
-        console.log('✅ Food logs loaded successfully');
-      }
+      await loadDailyFood(dateStr);
+      console.log('✅ Meals loaded successfully');
     } catch (error) {
-      console.error('❌ Failed to load food logs:', error);
-      Alert.alert('Error', 'Failed to load food logs. Please try again.');
+      console.error('❌ Failed to load meals:', error);
+      Alert.alert('Error', 'Failed to load meals. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -166,22 +181,11 @@ export default function FoodTab({ navigation, route }) {
       console.log('✅ Food saved to Firebase:', response);
 
       if (response.success) {
-        // Update local state
-        const newFood = {
+        // Update daily food context
+        await addFoodToDaily({
           id: response.food_log_id,
-          name: foodData.name,
-          brand: foodData.brand,
-          calories: foodData.calories,
-          protein: foodData.protein,
-          carbs: foodData.carbs,
-          fat: foodData.fat,
-          servingSize: foodData.servingSize,
-        };
-
-        setMeals(prev => ({
-          ...prev,
-          [mealType]: [...prev[mealType], newFood],
-        }));
+          ...foodLogData
+        });
 
         Alert.alert('Success', 'Food logged successfully!');
       }
@@ -195,6 +199,7 @@ export default function FoodTab({ navigation, route }) {
   const openFoodSearch = (mealType) => {
     navigation.navigate('FoodSearch', {
       mealType,
+      selectedDate: selectedDate.toISOString().split('T')[0], // Pass date as string (YYYY-MM-DD)
     });
   };
 
@@ -228,19 +233,11 @@ export default function FoodTab({ navigation, route }) {
       console.log('✅ Manual food entry saved:', response);
 
       if (response.success) {
-        const newFood = {
+        // Update daily food context
+        await addFoodToDaily({
           id: response.food_log_id,
-          name: foodName.trim(),
-          calories: parseInt(calories) || 0,
-          protein: parseInt(protein) || 0,
-          carbs: parseInt(carbs) || 0,
-          fat: parseInt(fat) || 0,
-        };
-
-        setMeals(prev => ({
-          ...prev,
-          [selectedMealType]: [...prev[selectedMealType], newFood],
-        }));
+          ...foodLogData
+        });
 
         // Reset form
         setFoodName('');
@@ -373,7 +370,10 @@ export default function FoodTab({ navigation, route }) {
 
   // D. Meal Section Component - Enhanced layout with prominent Add Food button
   const MealSection = ({ mealType, foods, icon }) => {
-    const mealCalories = foods.reduce((sum, food) => sum + food.calories, 0);
+    const mealCalories = foods.reduce((sum, food) => {
+      const cal = food.food?.calories || food.calories || 0;
+      return sum + cal;
+    }, 0);
 
     return (
       <View style={globalStyles.card}>
@@ -385,25 +385,30 @@ export default function FoodTab({ navigation, route }) {
               {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
             </Text>
           </View>
-          <Text style={styles.mealCalories}>{mealCalories} kcal</Text>
+          <Text style={styles.mealCalories}>{Math.round(mealCalories)} kcal</Text>
         </View>
 
         {/* Food Items List */}
         {foods.length > 0 ? (
           <View style={styles.foodList}>
-            {foods.map((food) => (
-              <View key={food.id} style={styles.foodItem}>
-                <View style={styles.foodItemInfo}>
-                  <Text style={globalStyles.bodyText}>
-                    {food.brand ? `${food.name} (${food.brand})` : food.name}
-                  </Text>
-                  {food.servingSize && (
-                    <Text style={globalStyles.captionText}>{food.servingSize}</Text>
-                  )}
+            {foods.map((item) => {
+              const food = item.food || item;
+              return (
+                <View key={item.id} style={styles.foodItem}>
+                  <View style={styles.foodItemInfo}>
+                    <Text style={globalStyles.bodyText}>
+                      {food.brand ? `${food.name} (${food.brand})` : food.name}
+                    </Text>
+                    {food.serving_amount && (
+                      <Text style={globalStyles.captionText}>
+                        {food.serving_amount}{food.serving_unit || 'g'}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={globalStyles.secondaryText}>{Math.round(food.calories)} cal</Text>
                 </View>
-                <Text style={globalStyles.secondaryText}>{food.calories} cal</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
         ) : (
           <View style={styles.emptyMealContainer}>
@@ -492,23 +497,76 @@ export default function FoodTab({ navigation, route }) {
     );
   };
 
-  const MealCard = ({ title, calories = 0, onPress }) => (
-    <View style={styles.mealCard}>
-      <View style={styles.mealCardHeader}>
-        <Text style={styles.mealCardTitle}>{title}</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={onPress}
-        >
-          <Ionicons name="add" size={20} color={colors.textSecondary} />
-        </TouchableOpacity>
+  const MealCard = ({ title, calories = 0, foods = [], onPress, mealType }) => {
+    const handleDeleteFood = async (foodId) => {
+      try {
+        Alert.alert(
+          'Delete Food',
+          'Are you sure you want to delete this food item?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: async () => {
+                await removeFoodFromDaily(foodId, mealType);
+                // Refresh the data after deletion
+                await refreshDailyFood(selectedDate.toISOString().split('T')[0]);
+              }
+            }
+          ]
+        );
+      } catch (error) {
+        console.error('❌ Failed to delete food:', error);
+        Alert.alert('Error', 'Failed to delete food item. Please try again.');
+      }
+    };
+
+    return (
+      <View style={styles.mealCard}>
+        <View style={styles.mealCardHeader}>
+          <Text style={styles.mealCardTitle}>{title}</Text>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={onPress}
+          >
+            <Ionicons name="add" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+        {foods.length > 0 ? (
+          <View style={styles.mealCardContent}>
+            {foods.map((item, index) => {
+              const food = item.food || item;
+              return (
+                <View key={item.id || index} style={styles.mealFoodItem}>
+                  <View style={styles.mealFoodInfo}>
+                    <Text style={styles.mealFoodName} numberOfLines={1}>
+                      {food.name}
+                    </Text>
+                    <Text style={styles.mealFoodCalories}>
+                      {Math.round(food.calories)} cal
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteFood(item.id)}
+                  >
+                    <Ionicons name="trash-outline" size={16} color={colors.error} />
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+            <Text style={styles.mealCardCalories}>{Math.round(calories)} kcal total</Text>
+          </View>
+        ) : (
+          <View style={styles.mealCardContent}>
+            <Text style={styles.mealCardEmpty}>No food logged</Text>
+            <Text style={styles.mealCardCalories}>{calories} kcal</Text>
+          </View>
+        )}
       </View>
-      <View style={styles.mealCardContent}>
-        <Text style={styles.mealCardEmpty}>No food logged</Text>
-        <Text style={styles.mealCardCalories}>{calories} kcal</Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -570,24 +628,49 @@ export default function FoodTab({ navigation, route }) {
         </View>
       </View>
 
+      {/* Loading Indicator */}
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.textPrimary} />
+          <Text style={styles.loadingText}>Loading meals...</Text>
+        </View>
+      )}
+
       {/* Meal Sections */}
-      <View style={styles.mealSections}>
-        <MealCard
-          title="Breakfast"
-          calories={meals.breakfast.reduce((sum, food) => sum + food.calories, 0)}
-          onPress={() => openFoodSearch('breakfast')}
-        />
-        <MealCard
-          title="Lunch"
-          calories={meals.lunch.reduce((sum, food) => sum + food.calories, 0)}
-          onPress={() => openFoodSearch('lunch')}
-        />
-        <MealCard
-          title="Dinner"
-          calories={meals.dinner.reduce((sum, food) => sum + food.calories, 0)}
-          onPress={() => openFoodSearch('dinner')}
-        />
-      </View>
+      {!isLoading && (
+        <View style={styles.mealSections}>
+          <MealCard
+            title="Breakfast"
+            foods={meals.breakfast}
+            calories={meals.breakfast.reduce((sum, item) => {
+              const food = item.food || item;
+              return sum + (food.calories || 0);
+            }, 0)}
+            onPress={() => openFoodSearch('breakfast')}
+            mealType="breakfast"
+          />
+          <MealCard
+            title="Lunch"
+            foods={meals.lunch}
+            calories={meals.lunch.reduce((sum, item) => {
+              const food = item.food || item;
+              return sum + (food.calories || 0);
+            }, 0)}
+            onPress={() => openFoodSearch('lunch')}
+            mealType="lunch"
+          />
+          <MealCard
+            title="Dinner"
+            foods={meals.dinner}
+            calories={meals.dinner.reduce((sum, item) => {
+              const food = item.food || item;
+              return sum + (food.calories || 0);
+            }, 0)}
+            onPress={() => openFoodSearch('dinner')}
+            mealType="dinner"
+          />
+        </View>
+      )}
 
       {/* Add Meal Modal */}
       <Modal
@@ -896,5 +979,57 @@ const styles = StyleSheet.create({
   macroInput: {
     flex: 1,
     marginHorizontal: spacing.xs,
+  },
+
+  // Loading Indicator
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+
+  loadingText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
+
+  // Meal Food Items
+  mealFoodItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
+  },
+
+  mealFoodInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  deleteButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.error + '10',
+  },
+
+  mealFoodName: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textPrimary,
+    marginRight: spacing.sm,
+  },
+
+  mealFoodCalories: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
   },
 });
