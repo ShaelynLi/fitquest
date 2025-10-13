@@ -167,16 +167,29 @@ export const GamificationProvider = ({ children }) => {
         await saveToStorage(STORAGE_KEYS.TOTAL_RUN_DISTANCE, totalDistance);
         
         // Check if any new blind boxes should be awarded
-        const currentBoxes = Math.floor(totalDistance / metersPerBlindBox);
+        const totalBoxesEarned = Math.floor(totalDistance / metersPerBlindBox);
         const storedBoxes = await AsyncStorage.getItem(STORAGE_KEYS.BLIND_BOXES);
-        const existingBoxes = storedBoxes ? parseInt(storedBoxes) : 0;
+        const currentUnopened = storedBoxes ? parseInt(storedBoxes) : 0;
         
-        // If backend shows more boxes should be earned, update
-        if (currentBoxes > existingBoxes) {
-          const newBoxes = currentBoxes - existingBoxes;
-          console.log(`🎁 Awarding ${newBoxes} blind box(es) based on backend data`);
-          setBlindBoxes(currentBoxes);
-          await saveToStorage(STORAGE_KEYS.BLIND_BOXES, currentBoxes);
+        // Calculate how many boxes user has earned in total vs local tracking
+        // We need to track "total boxes earned" separately to avoid losing unopened boxes
+        const storedTotalEarned = await AsyncStorage.getItem('@gamification_total_boxes_earned');
+        const previousTotalEarned = storedTotalEarned ? parseInt(storedTotalEarned) : 0;
+        
+        // If backend shows user earned more boxes in total
+        if (totalBoxesEarned > previousTotalEarned) {
+          const newBoxes = totalBoxesEarned - previousTotalEarned;
+          console.log(`🎁 Awarding ${newBoxes} new blind box(es) based on backend data`);
+          console.log(`📊 Previous total earned: ${previousTotalEarned}, New total earned: ${totalBoxesEarned}`);
+          console.log(`📦 Current unopened: ${currentUnopened}, Adding: ${newBoxes}, New total: ${currentUnopened + newBoxes}`);
+          
+          // Add new boxes to existing unopened boxes
+          const newUnopened = currentUnopened + newBoxes;
+          setBlindBoxes(newUnopened);
+          await saveToStorage(STORAGE_KEYS.BLIND_BOXES, newUnopened);
+          
+          // Update total earned tracking
+          await AsyncStorage.setItem('@gamification_total_boxes_earned', totalBoxesEarned.toString());
         }
         
         return totalDistance;

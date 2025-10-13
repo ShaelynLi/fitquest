@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, colors, globalStyles } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -22,13 +22,15 @@ import BlindBoxModal from '../components/gamification/BlindBoxModal';
  * Uses the new Aura Health design system with card-based layout.
  */
 export default function OverviewTab({ navigation }) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const {
     activeCompanion,
     blindBoxes,
     runningGoals,
     getCollectionStats,
     getBlindBoxProgress,
+    syncTotalDistanceFromBackend,
+    totalRunDistance,
     isLoading
   } = useGamification();
   const {
@@ -36,6 +38,7 @@ export default function OverviewTab({ navigation }) {
     getFormattedDistance,
     getFormattedDuration,
     getLastActivityText,
+    loadDailyStats,
     isLoading: statsLoading
   } = useDailyStats();
   const {
@@ -44,11 +47,13 @@ export default function OverviewTab({ navigation }) {
     getDailyGoals,
     getCalorieProgress,
     getLastMealText,
+    refreshDailyFood,
     isLoading: foodLoading
   } = useDailyFood();
 
   // Modal state
   const [showBlindBoxModal, setShowBlindBoxModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Get real intake data from daily food stats
   const nutrition = getFormattedNutrition();
@@ -91,8 +96,88 @@ export default function OverviewTab({ navigation }) {
     setShowBlindBoxModal(true);
   };
 
+  // Render milestone achievements
+  const renderMilestones = (totalKm) => {
+    const km = parseFloat(totalKm);
+    const milestones = [
+      { distance: 10, label: '10', icon: 'walk', color: colors.aurora.green },
+      { distance: 50, label: '50', icon: 'bicycle', color: colors.aurora.blue },
+      { distance: 100, label: '100', icon: 'fitness', color: colors.aurora.violet },
+      { distance: 200, label: '200', icon: 'rocket', color: colors.aurora.pink },
+      { distance: 500, label: '500', icon: 'trophy', color: colors.aurora.gold },
+    ];
+
+    return (
+      <View style={styles.milestonesRow}>
+        {milestones.map((milestone, index) => {
+          const achieved = km >= milestone.distance;
+          return (
+            <View key={index} style={styles.milestoneItem}>
+              <View style={[
+                styles.milestoneIcon,
+                achieved && { backgroundColor: milestone.color + '15', borderColor: milestone.color }
+              ]}>
+                <Ionicons 
+                  name={milestone.icon} 
+                  size={18} 
+                  color={achieved ? milestone.color : colors.gray[300]} 
+                />
+              </View>
+              <Text style={[
+                styles.milestoneLabel,
+                achieved && { color: colors.textPrimary, fontWeight: typography.weights.medium }
+              ]}>
+                {milestone.label}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      console.log('🔄 Refreshing home page data...');
+      
+      // Run all refresh operations in parallel for better performance
+      await Promise.all([
+        // Refresh user data (including petRewardGoal)
+        refreshUser ? refreshUser() : Promise.resolve(),
+        
+        // Sync total running distance from backend
+        syncTotalDistanceFromBackend ? syncTotalDistanceFromBackend() : Promise.resolve(),
+        
+        // Refresh daily stats (workouts)
+        loadDailyStats ? loadDailyStats() : Promise.resolve(),
+        
+        // Refresh daily food data
+        refreshDailyFood ? refreshDailyFood() : Promise.resolve(),
+      ]);
+      
+      console.log('✅ Home page data refreshed');
+    } catch (error) {
+      console.error('❌ Failed to refresh home page:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.blue[500]}
+          colors={[colors.blue[500]]}
+        />
+      }
+    >
       {/* Intake and Activity Cards */}
       <View style={styles.metricsGrid}>
         {/* Intake Card */}
@@ -250,6 +335,28 @@ export default function OverviewTab({ navigation }) {
             <Text style={styles.progressPercentage}>
               {blindBoxProgress.progressPercentage}%
             </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Total Distance Lifetime Stats */}
+      <View style={styles.lifetimeCard}>
+        <Text style={styles.cardLabel}>Lifetime Distance</Text>
+        <View style={styles.cardContent}>
+          <View style={styles.mainMetric}>
+            <Text style={[styles.mainNumber, { color: colors.aurora.gold }]}>
+              {(totalRunDistance / 1000).toFixed(2)}
+            </Text>
+            <Text style={styles.unitText}>km</Text>
+          </View>
+          
+          <Text style={styles.lifetimeSubtext}>
+            Total distance since you started
+          </Text>
+
+          {/* Achievement Milestones */}
+          <View style={styles.milestonesContainer}>
+            {renderMilestones((totalRunDistance / 1000).toFixed(2))}
           </View>
         </View>
       </View>
@@ -511,6 +618,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: 16,
     padding: spacing.lg,
+    marginBottom: spacing.lg,
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
@@ -647,6 +755,64 @@ const styles = StyleSheet.create({
     fontFamily: typography.body,
     fontWeight: typography.weights.bold,
     color: colors.purple[600],
+  },
+
+  // Lifetime Stats Card (matches other cards style)
+  lifetimeCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+
+  lifetimeSubtext: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+  },
+
+  milestonesContainer: {
+    marginTop: spacing.sm,
+  },
+
+  milestonesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+
+  milestoneItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+
+  milestoneIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.gray[100],
+    borderWidth: 1.5,
+    borderColor: colors.gray[200],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+
+  milestoneLabel: {
+    fontSize: 10,
+    fontFamily: typography.body,
+    color: colors.textTertiary,
   },
 
   // Loading State

@@ -57,11 +57,11 @@ export default function SummaryScreen({ navigation }) {
   const loadTimeoutRef = useRef(null);
 
   // Load activities for selected date
-  const loadActivitiesForDate = async (targetDate) => {
+  const loadActivitiesForDate = async (targetDate, forceRefresh = false) => {
     if (!token) return;
     
-    // Prevent duplicate API calls for the same date
-    if (lastLoadedDate === targetDate && !refreshing) {
+    // Prevent duplicate API calls for the same date (unless force refresh)
+    if (lastLoadedDate === targetDate && !refreshing && !forceRefresh) {
       console.log('📅 Activities already loaded for date:', targetDate);
       return;
     }
@@ -69,7 +69,7 @@ export default function SummaryScreen({ navigation }) {
     try {
       setIsLoading(true);
       setLastLoadedDate(targetDate);
-      console.log('📅 Loading activities for date:', targetDate);
+      console.log('📅 Loading activities for date:', targetDate, forceRefresh ? '(force refresh)' : '');
 
       // Get workout activities for the date
       const workoutResponse = await api.getActivitiesForDate(targetDate, token);
@@ -422,7 +422,7 @@ export default function SummaryScreen({ navigation }) {
   const onRefresh = async () => {
     setRefreshing(true);
     const dateStr = `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}-${selectedDate.toString().padStart(2, '0')}`;
-    await loadActivitiesForDate(dateStr);
+    await loadActivitiesForDate(dateStr, true); // Force refresh
     setRefreshing(false);
   };
 

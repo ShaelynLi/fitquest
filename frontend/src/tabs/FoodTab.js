@@ -11,6 +11,7 @@ import {
   Alert,
   SafeAreaView,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
@@ -40,16 +41,18 @@ import { useDailyFood } from '../context/DailyFoodContext';
  * D. Meal logging cards with improved layout
  */
 export default function FoodTab({ navigation, route }) {
-  const { token } = useAuth();
+  const { token, refreshUser } = useAuth();
   const { 
     dailyFood, 
     loadDailyFood, 
     addFoodToDaily, 
     removeFoodFromDaily,
+    refreshDailyFood,
     isLoading: foodLoading 
   } = useDailyFood();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Generate dates for the calendar slider (7 days: 3 previous, today, 3 future)
   const generateCalendarDates = () => {
@@ -201,6 +204,26 @@ export default function FoodTab({ navigation, route }) {
       mealType,
       selectedDate: selectedDate.toISOString().split('T')[0], // Pass date as string (YYYY-MM-DD)
     });
+  };
+
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      console.log('🔄 Refreshing food data...');
+      
+      // Refresh user data and daily food data
+      await Promise.all([
+        refreshUser ? refreshUser() : Promise.resolve(),
+        refreshDailyFood ? refreshDailyFood() : Promise.resolve(),
+      ]);
+      
+      console.log('✅ Food data refreshed');
+    } catch (error) {
+      console.error('❌ Failed to refresh food data:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Manual entry function
@@ -569,7 +592,18 @@ export default function FoodTab({ navigation, route }) {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.blue[500]}
+          colors={[colors.blue[500]]}
+        />
+      }
+    >
       {/* Intake and Macronutrients Combined Card */}
       <View style={styles.nutritionCard}>
         {/* Intake Section */}

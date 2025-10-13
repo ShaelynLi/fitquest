@@ -10,11 +10,15 @@ import {
   ScrollView,
   Dimensions,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { colors, spacing, typography, globalStyles } from '../../theme';
 import { useRun } from '../../context/RunContext';
+import { useAuth } from '../../context/AuthContext';
+import { useDailyStats } from '../../context/DailyStatsContext';
+import { api } from '../../services';
 
 /**
  * PreRunScreen Component - Run Setup and Start
@@ -41,11 +45,22 @@ export default function PreRunScreen() {
     setTargetDuration,
   } = useRun();
 
+  const { token, refreshUser } = useAuth();
+  const { loadDailyStats } = useDailyStats();
+
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalType, setGoalType] = useState('distance'); // 'distance' or 'time'
   const [goalValue, setGoalValue] = useState('');
   const [currentLocation, setCurrentLocation] = useState(null);
   const [mapReady, setMapReady] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Weekly stats
+  const [weeklyStats, setWeeklyStats] = useState({
+    runs: 0,
+    distance: 0,
+    duration: 0,
+  });
 
   // Check permissions on component mount
   useEffect(() => {
@@ -76,6 +91,80 @@ export default function PreRunScreen() {
 
     getCurrentLocation();
   }, [locationPermission]);
+
+  // Load weekly stats on mount
+  useEffect(() => {
+    loadWeeklyStats();
+  }, [token]);
+
+  // Load weekly stats from backend
+  const loadWeeklyStats = async () => {
+    if (!token) return;
+    
+    try {
+      // Get the start and end of the current week (Monday to Sunday)
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Calculate offset to Monday
+      
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + mondayOffset);
+      monday.setHours(0, 0, 0, 0);
+      
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      // Fetch all workouts
+      const response = await api.getWorkouts(token);
+      
+      if (response && response.workouts) {
+        // Filter workouts for this week
+        const weekWorkouts = response.workouts.filter(workout => {
+          const workoutDate = new Date(workout.start_time);
+          return workoutDate >= monday && workoutDate <= sunday;
+        });
+
+        // Calculate weekly totals
+        const totalDistance = weekWorkouts.reduce((sum, w) => sum + (w.distance_meters || 0), 0);
+        const totalDuration = weekWorkouts.reduce((sum, w) => sum + (w.duration_seconds || 0), 0);
+
+        setWeeklyStats({
+          runs: weekWorkouts.length,
+          distance: totalDistance / 1000, // Convert to km
+          duration: totalDuration,
+        });
+
+        console.log('📊 Weekly stats loaded:', {
+          runs: weekWorkouts.length,
+          distance: (totalDistance / 1000).toFixed(1) + ' km',
+          duration: formatDuration(totalDuration),
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to load weekly stats:', error);
+    }
+  };
+
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      console.log('🔄 Refreshing run data...');
+      
+      await Promise.all([
+        refreshUser ? refreshUser() : Promise.resolve(),
+        loadDailyStats ? loadDailyStats() : Promise.resolve(),
+        loadWeeklyStats(),
+      ]);
+      
+      console.log('✅ Run data refreshed');
+    } catch (error) {
+      console.error('❌ Failed to refresh run data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Handle start run with permission check
   const handleStartRun = async () => {
@@ -134,6 +223,17 @@ export default function PreRunScreen() {
     return `${minutes} min`;
   };
 
+  // Format time for weekly stats display
+  const formatWeeklyTime = (seconds) => {
+    if (!seconds || seconds === 0) return '0:00';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
+  };
+
   return (
     <View style={styles.container}>
       {/* Location-Aware Background */}
@@ -156,7 +256,18 @@ export default function PreRunScreen() {
       <View style={styles.mapOverlay} />
 
       {/* Content Container */}
-      <ScrollView style={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.contentContainer} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.blue[500]}
+            colors={[colors.blue[500]]}
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={globalStyles.pageTitle}>Ready to Run?</Text>
@@ -226,15 +337,15 @@ export default function PreRunScreen() {
           <Text style={globalStyles.sectionSubheader}>This Week</Text>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={globalStyles.mediumNumber}>0</Text>
+              <Text style={globalStyles.mediumNumber}>{weeklyStats.runs}</Text>
               <Text style={globalStyles.secondaryText}>runs</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={globalStyles.mediumNumber}>0.0</Text>
+              <Text style={globalStyles.mediumNumber}>{weeklyStats.distance.toFixed(1)}</Text>
               <Text style={globalStyles.secondaryText}>km</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={globalStyles.mediumNumber}>0:00</Text>
+              <Text style={globalStyles.mediumNumber}>{formatWeeklyTime(weeklyStats.duration)}</Text>
               <Text style={globalStyles.secondaryText}>time</Text>
             </View>
           </View>
