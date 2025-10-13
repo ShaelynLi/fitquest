@@ -108,11 +108,7 @@ export default function BarcodeScanner({ onBarcodeScanned, onClose, isVisible })
       <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeIcon} onPress={onClose}>
-          <Ionicons name="close" size={24} color={colors.white} />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Scan Barcode</Text>
-        <View style={styles.headerSpacer} />
       </View>
 
       {/* Camera View */}
@@ -174,31 +170,19 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md, // Reduced since we handle status bar in container
     paddingBottom: spacing.md,
     backgroundColor: colors.black,
     zIndex: 10, // Ensure header stays on top
   },
-  closeIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   headerTitle: {
     fontSize: typography.sizes.lg,
     fontFamily: typography.heading,
     fontWeight: typography.weights.semibold,
     color: colors.white,
-  },
-  headerSpacer: {
-    width: 44,
   },
 
   // Camera
