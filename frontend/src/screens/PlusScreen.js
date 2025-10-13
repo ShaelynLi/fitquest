@@ -13,15 +13,6 @@ export default function PlusScreen({ navigation }) {
 
   const quickActions = [
     {
-      icon: 'restaurant-outline',
-      title: 'Log Food',
-      color: colors.green[100],
-      iconColor: colors.green[600],
-      onPress: () => {
-        navigation.navigate('FoodSearch');
-      }
-    },
-    {
       icon: 'barcode-outline',
       title: 'Scan Barcode',
       color: colors.blue[100],
@@ -51,31 +42,12 @@ export default function PlusScreen({ navigation }) {
         // Navigate to Home screen and switch to Run tab
         navigation.navigate('Main', { screen: 'Home', params: { initialTab: 'Run' } });
       }
-    },
-    {
-      icon: 'water-outline',
-      title: 'Log Water',
-      color: colors.teal[100],
-      iconColor: colors.teal[600],
-      onPress: () => {
-        console.log('Log Water - TODO');
-      }
-    },
-    {
-      icon: 'fitness-outline',
-      title: 'Log Weight',
-      color: colors.yellow[100],
-      iconColor: colors.yellow[600],
-      onPress: () => {
-        console.log('Log Weight - TODO');
-      }
     }
   ];
 
   // Organize actions into categories
-  const foodActions = quickActions.slice(0, 3); // Log Food, Scan Barcode, Search Food
-  const fitnessActions = quickActions.slice(3, 4); // Start Running
-  const healthActions = quickActions.slice(4); // Log Water, Log Weight
+  const foodActions = quickActions.slice(0, 2); // Scan Barcode, Search Food
+  const fitnessActions = quickActions.slice(2, 3); // Start Running
 
   const renderActionButton = (action, index) => (
     <TouchableOpacity
@@ -116,14 +88,6 @@ export default function PlusScreen({ navigation }) {
           <Text style={styles.sectionTitle}>Fitness</Text>
           <View style={styles.actionsContainer}>
             {fitnessActions.map((action, index) => renderActionButton(action, index))}
-          </View>
-        </View>
-
-        {/* Health Tracking Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Health Tracking</Text>
-          <View style={styles.actionsContainer}>
-            {healthActions.map((action, index) => renderActionButton(action, index))}
           </View>
         </View>
       </View>
