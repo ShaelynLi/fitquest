@@ -323,6 +323,8 @@ export default function SummaryScreen({ navigation }) {
             setSelectedYear(dateObj.year);
             const dateStr = `${dateObj.year}-${(dateObj.month + 1).toString().padStart(2, '0')}-${dateObj.date.toString().padStart(2, '0')}`;
             loadActivitiesForDate(dateStr);
+            // Close the calendar modal after selecting a date
+            setShowCalendarModal(false);
           }
         }}
       >
