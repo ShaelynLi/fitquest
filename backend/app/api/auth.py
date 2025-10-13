@@ -212,12 +212,39 @@ def resend_verification_email(authorization: str = Header(...)):
 
 @router.get("/me")
 def me(user=Depends(get_current_user)):
-    return {
-        "uid": user.get("uid"),
-        "email": user.get("email"),
-        "name": user.get("name"),
-        "provider": user.get("firebase", {}).get("sign_in_provider"),
-    }
+    """Get current user information including profile data from Firestore"""
+    try:
+        # Get basic user info from Firebase Auth
+        basic_info = {
+            "uid": user.get("uid"),
+            "email": user.get("email"),
+            "name": user.get("name"),
+            "provider": user.get("firebase", {}).get("sign_in_provider"),
+        }
+        
+        # Try to get additional profile data from Firestore
+        try:
+            user_doc = db.collection("users").document(user["uid"]).get()
+            if user_doc.exists:
+                user_data = user_doc.to_dict()
+                # Add important profile fields
+                basic_info["petRewardGoal"] = user_data.get("petRewardGoal")
+                basic_info["weeklyRunGoal"] = user_data.get("weeklyRunGoal")
+                basic_info["primaryGoal"] = user_data.get("primaryGoal")
+                basic_info["units"] = user_data.get("units")
+                # Add any other fields that might be useful
+                basic_info["displayName"] = user_data.get("displayName")
+                basic_info["dateOfBirth"] = user_data.get("dateOfBirth")
+                basic_info["gender"] = user_data.get("gender")
+        except Exception as e:
+            print(f"⚠️ Could not load user profile from Firestore: {e}")
+            # Continue with basic info only
+        
+        return basic_info
+        
+    except Exception as e:
+        print(f"❌ Error in /me endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get user info: {e}")
 
 @router.get("/email-status/{email}")
 def check_email_status(email: str):

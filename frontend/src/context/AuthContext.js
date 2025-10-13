@@ -86,7 +86,25 @@ export function AuthProvider({ children }) {
     await AsyncStorage.removeItem(STORAGE_KEY);
   };
 
-  const value = useMemo(() => ({ user, token, loading, login, register, completeOnboarding, logout }), [user, token, loading]);
+  const refreshUser = async () => {
+    if (!token) {
+      console.log('⚠️ No token available, cannot refresh user data');
+      return;
+    }
+    
+    try {
+      console.log('🔄 Refreshing user data from backend...');
+      const userData = await api.me(token);
+      setUser(userData);
+      console.log('✅ User data refreshed successfully');
+      return userData;
+    } catch (error) {
+      console.error('❌ Failed to refresh user data:', error);
+      throw error;
+    }
+  };
+
+  const value = useMemo(() => ({ user, token, loading, login, register, completeOnboarding, logout, refreshUser }), [user, token, loading]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

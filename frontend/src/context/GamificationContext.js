@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PET_COLLECTION, getRandomPetDrop, RARITY_CONFIG } from '../data/pets';
+import { useAuth } from './AuthContext';
+import { api } from '../services';
 
 /**
  * Gamification Context
@@ -31,14 +34,16 @@ const STORAGE_KEYS = {
   TOTAL_RUN_DISTANCE: '@gamification_total_run_distance'
 };
 
-// Constants for blind box rewards
-const METERS_PER_BLIND_BOX = 5000; // 5000 meters = 5km per blind box
+// Default meters per blind box (5km) - used as fallback
+const DEFAULT_METERS_PER_BLIND_BOX = 5000;
 
 export const GamificationProvider = ({ children }) => {
+  const { user, token, refreshUser } = useAuth(); // Get user data, token, and refresh function from AuthContext
   const [userPets, setUserPets] = useState([]); // Array of pet IDs user owns
   const [blindBoxes, setBlindBoxes] = useState(0); // Number of unopened blind boxes
   const [activeCompanion, setActiveCompanion] = useState(null); // Currently selected pet
-  const [totalRunDistance, setTotalRunDistance] = useState(0); // Total distance run in meters
+  const [totalRunDistance, setTotalRunDistance] = useState(0); // Total distance run in meters (across all dates)
+  const [metersPerBlindBox, setMetersPerBlindBox] = useState(DEFAULT_METERS_PER_BLIND_BOX); // User's custom goal
   const [runningGoals, setRunningGoals] = useState({
     daily: { distance: 5000, completed: false }, // 5km daily goal
     weekly: { distance: 25000, completed: false }, // 25km weekly goal
@@ -51,6 +56,45 @@ export const GamificationProvider = ({ children }) => {
   useEffect(() => {
     loadGamificationData();
   }, []);
+
+  // Update metersPerBlindBox when user data changes
+  useEffect(() => {
+    if (user && user.petRewardGoal) {
+      // Convert km to meters
+      const metersGoal = user.petRewardGoal * 1000;
+      setMetersPerBlindBox(metersGoal);
+      console.log(`✅ User's blind box goal set to: ${user.petRewardGoal}km (${metersGoal}m)`);
+    } else {
+      // Use default if user hasn't set a goal
+      setMetersPerBlindBox(DEFAULT_METERS_PER_BLIND_BOX);
+      console.log(`ℹ️ Using default blind box goal: ${DEFAULT_METERS_PER_BLIND_BOX / 1000}km`);
+    }
+  }, [user]);
+
+  // Sync total running distance from backend when user logs in
+  useEffect(() => {
+    if (token && user) {
+      syncTotalDistanceFromBackend();
+    }
+  }, [token, user]);
+
+  // Listen for app state changes and refresh user data when app comes to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active' && token && refreshUser) {
+        console.log('📱 App became active, refreshing user data...');
+        try {
+          await refreshUser();
+        } catch (error) {
+          console.error('❌ Failed to refresh user data on app resume:', error);
+        }
+      }
+    });
+
+    return () => {
+      subscription?.remove();
+    };
+  }, [token, refreshUser]);
 
   const loadGamificationData = async () => {
     try {
@@ -96,6 +140,50 @@ export const GamificationProvider = ({ children }) => {
       await AsyncStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
       console.error(`Failed to save ${key}:`, error);
+    }
+  };
+
+  // Sync total running distance from backend
+  const syncTotalDistanceFromBackend = async () => {
+    if (!token) return;
+    
+    try {
+      console.log('🔄 Syncing total running distance from backend...');
+      
+      // Get all workouts from backend
+      const response = await api.getWorkouts(token);
+      
+      if (response && response.workouts) {
+        // Calculate total distance from all workouts
+        const totalDistance = response.workouts.reduce((sum, workout) => {
+          return sum + (workout.distance_meters || 0);
+        }, 0);
+        
+        console.log(`✅ Total distance from backend: ${totalDistance}m (${(totalDistance / 1000).toFixed(2)}km)`);
+        console.log(`📊 Total workouts: ${response.workouts.length}`);
+        
+        // Update state and storage
+        setTotalRunDistance(totalDistance);
+        await saveToStorage(STORAGE_KEYS.TOTAL_RUN_DISTANCE, totalDistance);
+        
+        // Check if any new blind boxes should be awarded
+        const currentBoxes = Math.floor(totalDistance / metersPerBlindBox);
+        const storedBoxes = await AsyncStorage.getItem(STORAGE_KEYS.BLIND_BOXES);
+        const existingBoxes = storedBoxes ? parseInt(storedBoxes) : 0;
+        
+        // If backend shows more boxes should be earned, update
+        if (currentBoxes > existingBoxes) {
+          const newBoxes = currentBoxes - existingBoxes;
+          console.log(`🎁 Awarding ${newBoxes} blind box(es) based on backend data`);
+          setBlindBoxes(currentBoxes);
+          await saveToStorage(STORAGE_KEYS.BLIND_BOXES, currentBoxes);
+        }
+        
+        return totalDistance;
+      }
+    } catch (error) {
+      console.error('❌ Failed to sync total distance from backend:', error);
+      // Don't throw error, just log it - we'll use local data
     }
   };
 
@@ -273,9 +361,9 @@ export const GamificationProvider = ({ children }) => {
   const addRunningDistance = async (distanceMeters) => {
     const newTotalDistance = totalRunDistance + distanceMeters;
     
-    // Calculate how many new blind boxes should be awarded
-    const oldBoxes = Math.floor(totalRunDistance / METERS_PER_BLIND_BOX);
-    const newBoxes = Math.floor(newTotalDistance / METERS_PER_BLIND_BOX);
+    // Calculate how many new blind boxes should be awarded based on user's custom goal
+    const oldBoxes = Math.floor(totalRunDistance / metersPerBlindBox);
+    const newBoxes = Math.floor(newTotalDistance / metersPerBlindBox);
     const boxesEarned = newBoxes - oldBoxes;
     
     // Update total distance
@@ -286,7 +374,7 @@ export const GamificationProvider = ({ children }) => {
     const achievements = [];
     if (boxesEarned > 0) {
       for (let i = 0; i < boxesEarned; i++) {
-        const achievement = await awardBlindBox(`Ran ${METERS_PER_BLIND_BOX}m`);
+        const achievement = await awardBlindBox(`Ran ${metersPerBlindBox}m (${metersPerBlindBox / 1000}km)`);
         achievements.push(achievement);
       }
     }
@@ -295,23 +383,23 @@ export const GamificationProvider = ({ children }) => {
       totalDistance: newTotalDistance,
       boxesEarned,
       achievements,
-      progressToNextBox: newTotalDistance % METERS_PER_BLIND_BOX,
-      remainingDistance: METERS_PER_BLIND_BOX - (newTotalDistance % METERS_PER_BLIND_BOX)
+      progressToNextBox: newTotalDistance % metersPerBlindBox,
+      remainingDistance: metersPerBlindBox - (newTotalDistance % metersPerBlindBox)
     };
   };
 
   // Get blind box progress info
   const getBlindBoxProgress = () => {
-    const progressToNextBox = totalRunDistance % METERS_PER_BLIND_BOX;
-    const remainingDistance = METERS_PER_BLIND_BOX - progressToNextBox;
-    const progressPercentage = (progressToNextBox / METERS_PER_BLIND_BOX) * 100;
+    const progressToNextBox = totalRunDistance % metersPerBlindBox;
+    const remainingDistance = metersPerBlindBox - progressToNextBox;
+    const progressPercentage = (progressToNextBox / metersPerBlindBox) * 100;
     
     return {
       totalDistance: totalRunDistance,
       progressToNextBox,
       remainingDistance,
       progressPercentage: Math.round(progressPercentage),
-      metersPerBox: METERS_PER_BLIND_BOX
+      metersPerBox: metersPerBlindBox
     };
   };
 
@@ -323,6 +411,7 @@ export const GamificationProvider = ({ children }) => {
     runningGoals,
     achievementHistory,
     totalRunDistance,
+    metersPerBlindBox,
     isLoading,
 
     // Actions
@@ -332,6 +421,7 @@ export const GamificationProvider = ({ children }) => {
     updateRunningProgress,
     resetGoals,
     addRunningDistance,
+    syncTotalDistanceFromBackend,
 
     // Helpers
     getCollectionStats,
