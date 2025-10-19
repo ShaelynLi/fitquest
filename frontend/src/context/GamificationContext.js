@@ -71,9 +71,10 @@ export const GamificationProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Sync total running distance from backend when user logs in
+  // Sync pet collection and total running distance from backend when user logs in
   useEffect(() => {
     if (token && user) {
+      syncPetsFromBackend();
       syncTotalDistanceFromBackend();
     }
   }, [token, user]);
@@ -140,6 +141,58 @@ export const GamificationProvider = ({ children }) => {
       await AsyncStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
       console.error(`Failed to save ${key}:`, error);
+    }
+  };
+
+  // Sync pet collection from backend
+  const syncPetsFromBackend = async () => {
+    if (!token) return;
+    
+    try {
+      console.log('🐾 Syncing pet collection from backend...');
+      
+      // Get pets from backend
+      const response = await api.getUserPets(token);
+      
+      if (response && response.success && response.pets) {
+        const backendPets = response.pets;
+        console.log(`📦 Backend pets: ${backendPets.length}`);
+        
+        // Get local pets
+        const storedPets = await AsyncStorage.getItem(STORAGE_KEYS.USER_PETS);
+        const localPets = storedPets ? JSON.parse(storedPets) : [];
+        console.log(`📱 Local pets: ${localPets.length}`);
+        
+        // Merge local and backend pets (union of both)
+        const mergedPets = Array.from(new Set([...localPets, ...backendPets]));
+        console.log(`🔄 Merged pets: ${mergedPets.length}`);
+        
+        // If there are local pets not in backend, sync them
+        const localOnlyPets = localPets.filter(id => !backendPets.includes(id));
+        if (localOnlyPets.length > 0) {
+          console.log(`⬆️ Syncing ${localOnlyPets.length} local-only pets to backend...`);
+          try {
+            await api.updateUserPets(mergedPets, token);
+            console.log('✅ Local pets synced to backend');
+          } catch (error) {
+            console.error('❌ Failed to sync local pets to backend:', error);
+          }
+        }
+        
+        // Update state and storage with merged collection
+        if (mergedPets.length !== localPets.length) {
+          setUserPets(mergedPets);
+          await saveToStorage(STORAGE_KEYS.USER_PETS, mergedPets);
+          console.log('✅ Pet collection synced successfully');
+        } else {
+          console.log('✅ Pet collection already in sync');
+        }
+        
+        return mergedPets;
+      }
+    } catch (error) {
+      console.error('❌ Failed to sync pets from backend:', error);
+      // Don't throw error - we'll use local data
     }
   };
 
@@ -274,12 +327,25 @@ export const GamificationProvider = ({ children }) => {
     const newAchievements = [...achievementHistory, achievement];
     setAchievementHistory(newAchievements);
 
-    // Save to storage
+    // Save to local storage
     await Promise.all([
       saveToStorage(STORAGE_KEYS.BLIND_BOXES, newBoxCount),
       saveToStorage(STORAGE_KEYS.USER_PETS, newUserPets),
       saveToStorage(STORAGE_KEYS.ACHIEVEMENT_HISTORY, newAchievements)
     ]);
+
+    // Sync to backend if user is logged in
+    if (token && isNewPet) {
+      try {
+        console.log('🎁 Syncing new pet to backend:', newPet.id);
+        await api.addPetToCollection(newPet.id, token);
+        console.log('✅ Pet synced to backend successfully');
+      } catch (error) {
+        console.error('❌ Failed to sync pet to backend:', error);
+        // Don't throw error - local save was successful
+        // Backend sync will happen on next app start
+      }
+    }
 
     return {
       pet: newPet,
@@ -435,6 +501,7 @@ export const GamificationProvider = ({ children }) => {
     resetGoals,
     addRunningDistance,
     syncTotalDistanceFromBackend,
+    syncPetsFromBackend,
 
     // Helpers
     getCollectionStats,

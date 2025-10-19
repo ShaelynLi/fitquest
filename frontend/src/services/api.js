@@ -819,6 +819,144 @@ class BackendApiService {
       headers,
     });
   }
+
+  // ============ PET COLLECTION API METHODS ============
+
+  /**
+   * Get user's pet collection
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Pet collection response with list of pet IDs
+   */
+  async getUserPets(token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Retry mechanism for getting pets
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🐾 Getting user pets (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest('/api/pets/', {
+          method: 'GET',
+          headers,
+        });
+        console.log('✅ User pets retrieved successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Get pets attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Get pets failed after 3 attempts');
+    throw lastError;
+  }
+
+  /**
+   * Update user's complete pet collection
+   * @param {Array<string>} pets - Array of pet IDs
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Update response
+   */
+  async updateUserPets(pets, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Retry mechanism for updating pets
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🐾 Updating user pets (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest('/api/pets/', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ pets }),
+        });
+        console.log('✅ User pets updated successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Update pets attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Update pets failed after 3 attempts');
+    throw lastError;
+  }
+
+  /**
+   * Add a single pet to user's collection
+   * @param {string} petId - Pet ID to add
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Update response
+   */
+  async addPetToCollection(petId, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Retry mechanism for adding pet
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🎁 Adding pet ${petId} (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest('/api/pets/add', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ pet_id: petId }),
+        });
+        console.log('✅ Pet added successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Add pet attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Add pet failed after 3 attempts');
+    throw lastError;
+  }
+
+  /**
+   * Remove a pet from user's collection
+   * @param {string} petId - Pet ID to remove
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Update response
+   */
+  async removePetFromCollection(petId, token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return await this.makeRequest(`/api/pets/${petId}`, {
+      method: 'DELETE',
+      headers,
+    });
+  }
 }
 
 // Create singleton instance
