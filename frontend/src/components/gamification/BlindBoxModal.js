@@ -192,7 +192,14 @@ export default function BlindBoxModal({ visible, onClose }) {
           </View>
 
           {/* Pet Image */}
-          <Image source={{ uri: pet.image }} style={styles.petImage} />
+          <Image 
+            source={{ uri: pet.image }} 
+            style={styles.petImage}
+            defaultSource={require('../../../assets/icon.png')}
+            onError={(e) => {
+              console.log('Failed to load pet image:', pet.name, pet.image);
+            }}
+          />
 
           {/* Pet Info */}
           <View style={styles.petInfo}>

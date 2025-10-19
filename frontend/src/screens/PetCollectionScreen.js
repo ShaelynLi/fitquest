@@ -102,6 +102,10 @@ export default function PetCollectionScreen({ navigation }) {
               styles.petImage,
               !isOwned && styles.lockedPetImage
             ]}
+            defaultSource={require('../../assets/icon.png')}
+            onError={(e) => {
+              console.log('Failed to load pet image:', pet.name, pet.image);
+            }}
           />
           {!isOwned && (
             <View style={styles.lockOverlay}>

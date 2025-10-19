@@ -96,7 +96,7 @@ export const PET_COLLECTION = [
     name: 'Creeper',
     series: PET_SERIES.MINECRAFT,
     rarity: PET_RARITY.COMMON,
-    image: 'https://minecraft.wiki/images/f/f4/Creeper_JE2_BE1.png',
+    image: 'https://static.wikia.nocookie.net/minecraft_gamepedia/images/f/f4/Creeper_JE2_BE1.png',
     description: 'A mysterious green creature that explodes.',
     element: 'Explosive',
     unlocked: false
@@ -106,7 +106,7 @@ export const PET_COLLECTION = [
     name: 'Ender Dragon',
     series: PET_SERIES.MINECRAFT,
     rarity: PET_RARITY.LEGENDARY,
-    image: 'https://minecraft.wiki/images/d/d3/Ender_Dragon.png',
+    image: 'https://static.wikia.nocookie.net/minecraft_gamepedia/images/d/d3/Ender_Dragon.png',
     description: 'The ultimate boss of the End dimension.',
     element: 'Ender',
     unlocked: false
@@ -116,7 +116,7 @@ export const PET_COLLECTION = [
     name: 'Wolf',
     series: PET_SERIES.MINECRAFT,
     rarity: PET_RARITY.RARE,
-    image: 'https://minecraft.wiki/images/5/50/Wolf_JE2_BE2.png',
+    image: 'https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/50/Wolf_JE2_BE2.png',
     description: 'A loyal companion that can be tamed.',
     element: 'Neutral',
     unlocked: false
@@ -128,7 +128,7 @@ export const PET_COLLECTION = [
     name: 'Classic Labubu',
     series: PET_SERIES.LABUBU,
     rarity: PET_RARITY.COMMON,
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop',
+    image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/172.png',
     description: 'The original mischievous little monster.',
     element: 'Mischief',
     unlocked: false
@@ -138,7 +138,7 @@ export const PET_COLLECTION = [
     name: 'Golden Labubu',
     series: PET_SERIES.LABUBU,
     rarity: PET_RARITY.LEGENDARY,
-    image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop',
+    image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/94.png',
     description: 'A rare golden variant with special powers.',
     element: 'Light',
     unlocked: false
@@ -147,21 +147,21 @@ export const PET_COLLECTION = [
   // Cat Series
   {
     id: 'cats_001',
-    name: 'Tabby Cat',
+    name: 'Meowth',
     series: PET_SERIES.CATS,
     rarity: PET_RARITY.COMMON,
-    image: 'https://images.unsplash.com/photo-1596854407944-bf87f6fdd49e?w=400&h=400&fit=crop',
-    description: 'A friendly striped cat.',
+    image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/52.png',
+    description: 'A friendly cat Pokémon that loves shiny things.',
     element: 'Comfort',
     unlocked: false
   },
   {
     id: 'cats_002',
-    name: 'Rainbow Cat',
+    name: 'Persian',
     series: PET_SERIES.CATS,
     rarity: PET_RARITY.EPIC,
-    image: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=400&h=400&fit=crop',
-    description: 'A magical cat with rainbow powers.',
+    image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/53.png',
+    description: 'An elegant cat with a regal appearance.',
     element: 'Magic',
     unlocked: false
   },
@@ -169,21 +169,21 @@ export const PET_COLLECTION = [
   // Dog Series
   {
     id: 'dogs_001',
-    name: 'Golden Retriever',
+    name: 'Growlithe',
     series: PET_SERIES.DOGS,
     rarity: PET_RARITY.COMMON,
-    image: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=400&fit=crop',
-    description: 'A loyal and friendly companion.',
+    image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/58.png',
+    description: 'A loyal fire-type puppy Pokémon.',
     element: 'Loyalty',
     unlocked: false
   },
   {
     id: 'dogs_002',
-    name: 'Space Corgi',
+    name: 'Arcanine',
     series: PET_SERIES.DOGS,
     rarity: PET_RARITY.EPIC,
-    image: 'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?w=400&h=400&fit=crop',
-    description: 'A corgi from outer space with cosmic powers.',
+    image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/59.png',
+    description: 'A legendary fire dog with incredible speed.',
     element: 'Cosmic',
     unlocked: false
   }
