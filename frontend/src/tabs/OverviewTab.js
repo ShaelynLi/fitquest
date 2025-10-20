@@ -114,14 +114,20 @@ export default function OverviewTab({ navigation }) {
       console.log('💾 Saving new daily goal:', goalKm + 'km');
       await api.updateUserProfile(token, { dailyRunGoal: Math.round(goalKm) });
       
-      // Refresh user data and daily progress
-      await Promise.all([
-        refreshUser ? refreshUser() : Promise.resolve(),
-        loadDailyProgress(),
-      ]);
+
+      const newGoalMeters = Math.round(goalKm) * 1000;
+      const currentCompleted = dailyGoalData?.completed_distance_meters || 0;
+      const newPercentage = (currentCompleted / newGoalMeters) * 100;
+      
+      setDailyGoalData({
+        ...dailyGoalData,
+        goal_distance_meters: newGoalMeters,
+        completion_percentage: newPercentage,
+      });
+      setMoodPercentage(newPercentage);
       
       setIsEditingGoal(false);
-      Alert.alert('Success', `Daily goal updated to ${goalKm}km`);
+      console.log('✅ Daily goal updated locally:', goalKm + 'km, new percentage:', newPercentage.toFixed(2) + '%');
     } catch (error) {
       console.error('❌ Failed to update goal:', error);
       Alert.alert('Error', 'Failed to update goal. Please try again.');
