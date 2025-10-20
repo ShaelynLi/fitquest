@@ -55,6 +55,7 @@ def register_user(req: OnboardingRequest):
                 # Fitness Goals
                 "primaryGoal": req.primaryGoal,
                 "targetWeight": float(req.target_weight_kg) if req.target_weight_kg else None,
+                "dailyRunGoal": req.dailyRunGoal,
                 "weeklyRunGoal": req.weeklyRunGoal,
                 "petRewardGoal": req.petRewardGoal,
                 
@@ -169,6 +170,8 @@ def update_profile(payload: ProfileUpdate, user=Depends(get_current_user)):
         update_map["heightCm"] = float(payload.height_cm)
     if payload.weight_kg is not None:
         update_map["weightKg"] = float(payload.weight_kg)
+    if payload.dailyRunGoal is not None:
+        update_map["dailyRunGoal"] = int(payload.dailyRunGoal)
 
     if not update_map:
         return {"updated": False, "message": "No valid fields provided"}
@@ -207,9 +210,10 @@ def get_daily_progress(user=Depends(get_current_user)):
         
         user_data = user_doc.to_dict()
         
-        # Get daily goal in meters (petRewardGoal is in km, default 5km)
-        pet_reward_goal_km = user_data.get("petRewardGoal", 5)
-        goal_distance_meters = pet_reward_goal_km * 1000
+        # Get daily goal in meters (dailyRunGoal is in km, default 5km)
+        # Use dailyRunGoal if set, otherwise fall back to petRewardGoal, finally default to 5km
+        daily_run_goal_km = user_data.get("dailyRunGoal") or user_data.get("petRewardGoal") or 5
+        goal_distance_meters = daily_run_goal_km * 1000
         
         # Get today's date
         today = date_type.today()

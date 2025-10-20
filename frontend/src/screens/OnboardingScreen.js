@@ -56,6 +56,7 @@ export default function OnboardingScreen({ navigation }) {
     // Step 3: Fitness Goals
     primaryGoal: '',
     target_weight_kg: '',
+    dailyRunGoal: '',
     weeklyRunGoal: '',
     petRewardGoal: '',
     
@@ -379,7 +380,8 @@ export default function OnboardingScreen({ navigation }) {
         ])}
 
         {renderInput('Target Weight (kg)', 'target_weight_kg', '65', 'numeric')}
-        {renderInput('Weekly Run Goal (km)', 'weeklyRunGoal', '10', 'numeric')}
+        {renderInput('Daily Run Goal (km)', 'dailyRunGoal', '5', 'numeric')}
+        {renderInput('Weekly Run Goal (km)', 'weeklyRunGoal', '35', 'numeric')}
         {renderInput('Pet Reward Goal (km)', 'petRewardGoal', '5', 'numeric')}
       </View>
     </View>

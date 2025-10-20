@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Image, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Image, RefreshControl, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, colors, globalStyles } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -60,6 +60,11 @@ export default function OverviewTab({ navigation }) {
   // Pet mood state
   const [moodPercentage, setMoodPercentage] = useState(0);
   const [moodLoading, setMoodLoading] = useState(false);
+  const [dailyGoalData, setDailyGoalData] = useState(null);
+  
+  // Edit goal state
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [newGoalValue, setNewGoalValue] = useState('');
 
   // Load daily progress for pet mood
   useEffect(() => {
@@ -76,7 +81,9 @@ export default function OverviewTab({ navigation }) {
       const response = await api.getDailyProgress(token);
       if (response && response.success) {
         setMoodPercentage(response.completion_percentage || 0);
+        setDailyGoalData(response);
         console.log('📊 Pet mood percentage:', response.completion_percentage + '%');
+        console.log('📊 Daily goal:', response.goal_distance_meters + 'm, Completed:', response.completed_distance_meters + 'm');
       }
     } catch (error) {
       console.error('❌ Failed to load daily progress:', error);
@@ -85,6 +92,45 @@ export default function OverviewTab({ navigation }) {
     } finally {
       setMoodLoading(false);
     }
+  };
+
+  const handleEditGoal = () => {
+    if (dailyGoalData) {
+      setNewGoalValue(String(dailyGoalData.goal_distance_meters / 1000));
+    }
+    setIsEditingGoal(true);
+  };
+
+  const handleSaveGoal = async () => {
+    if (!token || !newGoalValue) return;
+    
+    const goalKm = parseFloat(newGoalValue);
+    if (isNaN(goalKm) || goalKm < 1 || goalKm > 50) {
+      Alert.alert('Invalid Goal', 'Please enter a goal between 1 and 50 km');
+      return;
+    }
+    
+    try {
+      console.log('💾 Saving new daily goal:', goalKm + 'km');
+      await api.updateUserProfile(token, { dailyRunGoal: Math.round(goalKm) });
+      
+      // Refresh user data and daily progress
+      await Promise.all([
+        refreshUser ? refreshUser() : Promise.resolve(),
+        loadDailyProgress(),
+      ]);
+      
+      setIsEditingGoal(false);
+      Alert.alert('Success', `Daily goal updated to ${goalKm}km`);
+    } catch (error) {
+      console.error('❌ Failed to update goal:', error);
+      Alert.alert('Error', 'Failed to update goal. Please try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingGoal(false);
+    setNewGoalValue('');
   };
 
   // Get real intake data from daily food stats
@@ -304,6 +350,59 @@ export default function OverviewTab({ navigation }) {
                   {getMoodConfig(moodPercentage).name}
                 </Text>
                 <Text style={styles.moodPercentage}>({Math.round(moodPercentage)}%)</Text>
+              </View>
+            )}
+
+            {/* Daily Goal Progress */}
+            {dailyGoalData && (
+              <View style={styles.goalContainer}>
+                <View style={styles.goalHeader}>
+                  <Text style={styles.goalLabel}>Today's Goal</Text>
+                  <TouchableOpacity onPress={handleEditGoal} style={styles.editButton}>
+                    <Ionicons name="create-outline" size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+                
+                {!isEditingGoal ? (
+                  <>
+                    <View style={styles.goalProgress}>
+                      <Text style={styles.goalDistance}>
+                        {(dailyGoalData.completed_distance_meters / 1000).toFixed(2)} km
+                      </Text>
+                      <Text style={styles.goalSeparator}>/</Text>
+                      <Text style={styles.goalTarget}>
+                        {(dailyGoalData.goal_distance_meters / 1000).toFixed(0)} km
+                      </Text>
+                    </View>
+                    <View style={styles.goalBar}>
+                      <View
+                        style={[
+                          styles.goalFill,
+                          { width: `${Math.min(moodPercentage, 100)}%`, backgroundColor: getMoodConfig(moodPercentage).color }
+                        ]}
+                      />
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.editGoalContainer}>
+                    <TextInput
+                      style={styles.goalInput}
+                      value={newGoalValue}
+                      onChangeText={setNewGoalValue}
+                      keyboardType="numeric"
+                      placeholder="Enter goal (km)"
+                      placeholderTextColor={colors.textTertiary}
+                    />
+                    <View style={styles.editActions}>
+                      <TouchableOpacity onPress={handleCancelEdit} style={styles.cancelButton}>
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={handleSaveGoal} style={styles.saveButton}>
+                        <Text style={styles.saveButtonText}>Save</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
               </View>
             )}
 
@@ -635,6 +734,105 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     fontFamily: typography.body,
     color: colors.textSecondary,
+  },
+
+  // Daily Goal Progress
+  goalContainer: {
+    width: '100%',
+    maxWidth: 240,
+    marginBottom: spacing.md,
+  },
+  goalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  goalLabel: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  editButton: {
+    padding: spacing.xs,
+  },
+  goalProgress: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  goalDistance: {
+    fontSize: typography.sizes.lg,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+  },
+  goalSeparator: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    marginHorizontal: spacing.xs,
+  },
+  goalTarget: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+  },
+  goalBar: {
+    height: 8,
+    backgroundColor: colors.gray[100],
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  goalFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  editGoalContainer: {
+    gap: spacing.sm,
+  },
+  goalInput: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    color: colors.textPrimary,
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: colors.gray[100],
+    borderRadius: 8,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: colors.aurora.blue,
+    borderRadius: 8,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.semibold,
+    color: colors.white,
   },
 
   // Energy Progress

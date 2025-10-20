@@ -47,6 +47,7 @@ class OnboardingRequest(BaseModel):
     # Fitness Goals
     primaryGoal: PrimaryGoal
     target_weight_kg: Optional[PositiveFloat] = None
+    dailyRunGoal: Optional[conint(ge=1, le=50)] = None  # km per day for daily goal
     weeklyRunGoal: Optional[conint(ge=0, le=200)] = None  # km per week
     petRewardGoal: Optional[conint(ge=1, le=50)] = None  # km to unlock pet box
     
@@ -72,6 +73,7 @@ class ProfileUpdate(BaseModel):
     birth_date: Optional[date] = None
     height_cm: Optional[PositiveFloat] = None
     weight_kg: Optional[PositiveFloat] = None
+    dailyRunGoal: Optional[conint(ge=1, le=50)] = None  # km per day
 
 # Daily goal progress
 class DailyGoalProgressResponse(BaseModel):
