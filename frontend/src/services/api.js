@@ -637,6 +637,44 @@ class BackendApiService {
     });
   }
 
+  /**
+   * Get daily goal progress (for pet mood)
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Daily progress response with pet mood
+   */
+  async getDailyProgress(token) {
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Retry mechanism for getting daily progress
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`📊 Getting daily progress (attempt ${attempt}/3)...`);
+        const response = await this.makeRequest('/api/users/daily-progress', {
+          method: 'GET',
+          headers,
+        });
+        console.log('✅ Daily progress retrieved successfully');
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ Get daily progress attempt ${attempt} failed:`, error.message);
+        
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error('❌ Get daily progress failed after 3 attempts');
+    throw lastError;
+  }
+
   // ============ FOOD LOGGING API METHODS ============
 
   /**

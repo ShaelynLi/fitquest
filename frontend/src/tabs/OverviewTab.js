@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, colors, globalStyles } from '../theme';
@@ -7,6 +7,8 @@ import { useGamification } from '../context/GamificationContext';
 import { useDailyStats } from '../context/DailyStatsContext';
 import { useDailyFood } from '../context/DailyFoodContext';
 import BlindBoxModal from '../components/gamification/BlindBoxModal';
+import { api } from '../services';
+import { getMoodConfig } from '../utils/petMood';
 
 /**
  * OverviewTab Component - Pet Dashboard & Daily Stats
@@ -22,7 +24,7 @@ import BlindBoxModal from '../components/gamification/BlindBoxModal';
  * Uses the new Aura Health design system with card-based layout.
  */
 export default function OverviewTab({ navigation }) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, token } = useAuth();
   const {
     activeCompanion,
     blindBoxes,
@@ -54,6 +56,36 @@ export default function OverviewTab({ navigation }) {
   // Modal state
   const [showBlindBoxModal, setShowBlindBoxModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Pet mood state
+  const [moodPercentage, setMoodPercentage] = useState(0);
+  const [moodLoading, setMoodLoading] = useState(false);
+
+  // Load daily progress for pet mood
+  useEffect(() => {
+    if (token) {
+      loadDailyProgress();
+    }
+  }, [token]);
+
+  const loadDailyProgress = async () => {
+    if (!token) return;
+    
+    try {
+      setMoodLoading(true);
+      const response = await api.getDailyProgress(token);
+      if (response && response.success) {
+        setMoodPercentage(response.completion_percentage || 0);
+        console.log('📊 Pet mood percentage:', response.completion_percentage + '%');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load daily progress:', error);
+      // Default to 0% on error
+      setMoodPercentage(0);
+    } finally {
+      setMoodLoading(false);
+    }
+  };
 
   // Get real intake data from daily food stats
   const nutrition = getFormattedNutrition();
@@ -155,6 +187,9 @@ export default function OverviewTab({ navigation }) {
         
         // Refresh daily food data
         refreshDailyFood ? refreshDailyFood() : Promise.resolve(),
+        
+        // Refresh pet mood (daily progress)
+        loadDailyProgress(),
       ]);
       
       console.log('✅ Home page data refreshed');
@@ -260,6 +295,17 @@ export default function OverviewTab({ navigation }) {
           {/* Pet Info */}
           <View style={styles.companionInfo}>
             <Text style={styles.companionName}>{activeCompanion?.name || 'Sparky'}</Text>
+
+            {/* Pet Mood */}
+            {!moodLoading && (
+              <View style={[styles.moodBadge, { backgroundColor: getMoodConfig(moodPercentage).backgroundColor }]}>
+                <Text style={styles.moodEmoji}>{getMoodConfig(moodPercentage).emoji}</Text>
+                <Text style={[styles.moodText, { color: getMoodConfig(moodPercentage).color }]}>
+                  {getMoodConfig(moodPercentage).name}
+                </Text>
+                <Text style={styles.moodPercentage}>({Math.round(moodPercentage)}%)</Text>
+              </View>
+            )}
 
             {/* Collection Progress */}
             <View style={styles.energyContainer}>
@@ -563,7 +609,32 @@ const styles = StyleSheet.create({
     fontFamily: typography.heading,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+
+  // Pet Mood Badge
+  moodBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
     marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  moodEmoji: {
+    fontSize: typography.sizes.md,
+  },
+  moodText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.bold,
+  },
+  moodPercentage: {
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
   },
 
   // Energy Progress

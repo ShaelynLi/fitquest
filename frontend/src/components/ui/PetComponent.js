@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../theme';
+import { getMoodConfig } from '../../utils/petMood';
 
 /**
  * PetComponent - Interactive Virtual Pet Display
@@ -27,6 +28,7 @@ import { colors, spacing, typography } from '../../theme';
  * @param {Function} onPlay - Callback for pet interactions (feed, play, clean)
  * @param {Object} statusMeters - Pet status with energy, health, happiness values
  * @param {Object} navigation - React Navigation object for screen navigation
+ * @param {number} moodPercentage - Daily goal completion percentage for pet mood (0-100)
  *
  * Features:
  * - Animated Pokemon sprites from PokeAPI
@@ -39,12 +41,15 @@ import { colors, spacing, typography } from '../../theme';
  * NOTE: GIF animations may not work on all platforms due to React Native limitations.
  * Consider using react-native-fast-image for better GIF support if needed.
  */
-const PetScreen = ({ pet, onPlay, statusMeters = {}, navigation }) => {
+const PetScreen = ({ pet, onPlay, statusMeters = {}, navigation, moodPercentage = 0 }) => {
   const [animatedValue] = useState(new Animated.Value(1));
   const [particles, setParticles] = useState([]);
 
   // Extract status meters with defaults
   const { energy = 72, health = 90, happiness = 85 } = statusMeters;
+  
+  // Get mood configuration based on completion percentage
+  const moodConfig = getMoodConfig(moodPercentage);
 
   // Simple breathing animation for the pet
   useEffect(() => {
@@ -241,6 +246,14 @@ const PetScreen = ({ pet, onPlay, statusMeters = {}, navigation }) => {
           {/* Pet Name */}
           <Text style={styles.petName}>{pet.name}</Text>
 
+          {/* Pet Mood */}
+          <View style={[styles.moodBadge, { backgroundColor: moodConfig.backgroundColor }]}>
+            <Text style={styles.moodEmoji}>{moodConfig.emoji}</Text>
+            <Text style={[styles.moodText, { color: moodConfig.color }]}>
+              {moodConfig.name}
+            </Text>
+          </View>
+
           {/* Level */}
           <Text style={styles.petLevel}>Level {pet.level}</Text>
 
@@ -422,6 +435,25 @@ const styles = StyleSheet.create({
   // Screen Effects - Remove glow for cleaner pixel look
   screenGlow: {
     display: 'none',
+  },
+
+  // Pet Mood Badge
+  moodBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 16,
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  moodEmoji: {
+    fontSize: typography.sizes.md,
+  },
+  moodText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.semibold,
   },
 });
 

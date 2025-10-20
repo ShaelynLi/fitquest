@@ -3,9 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from firebase_admin import auth as firebase_auth, firestore
 from app.core.firebase import db
 from app.dependencies.auth import get_current_user
-from app.schemas.users import ProfileUpdate, OnboardingRequest, OnboardingResponse
+from app.schemas.users import ProfileUpdate, OnboardingRequest, OnboardingResponse, DailyGoalProgressResponse
 import httpx
 from app.core.settings import settings
+from datetime import date as date_type, datetime
 
 router = APIRouter()
 
@@ -180,6 +181,93 @@ def update_profile(payload: ProfileUpdate, user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Failed to update profile: {e}")
 
     return {"updated": True}
+
+# Get daily goal progress (for pet mood)
+@router.get("/daily-progress", response_model=DailyGoalProgressResponse)
+def get_daily_progress(user=Depends(get_current_user)):
+    """
+    Get today's goal completion progress
+    
+    Calculates:
+    - User's daily goal distance (from petRewardGoal, default 5000m)
+    - Today's completed distance (from workouts)
+    - Completion percentage (0-100%)
+    - Pet mood based on percentage:
+      - 0-33%: upset
+      - 34-67%: happy
+      - 68-100%: cheerful
+    """
+    try:
+        uid = user.get("uid")
+        
+        # Get user's daily goal
+        user_doc = db.collection("users").document(uid).get()
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user_data = user_doc.to_dict()
+        
+        # Get daily goal in meters (petRewardGoal is in km, default 5km)
+        pet_reward_goal_km = user_data.get("petRewardGoal", 5)
+        goal_distance_meters = pet_reward_goal_km * 1000
+        
+        # Get today's date
+        today = date_type.today()
+        today_str = today.isoformat()
+        
+        # Get today's workouts
+        workouts_ref = db.collection("users").document(uid).collection("workouts")
+        
+        # Query workouts for today
+        # Workouts have start_time.date field in YYYY-MM-DD format
+        today_workouts = []
+        for workout_doc in workouts_ref.stream():
+            workout_data = workout_doc.to_dict()
+            
+            # Check if workout is from today
+            start_time = workout_data.get("start_time", {})
+            workout_date = start_time.get("date")
+            
+            if workout_date == today_str and workout_data.get("status") == "completed":
+                today_workouts.append(workout_data)
+        
+        # Calculate total distance for today
+        completed_distance_meters = 0
+        for workout in today_workouts:
+            distance = workout.get("distance_meters", 0)
+            completed_distance_meters += distance
+        
+        # Calculate completion percentage
+        if goal_distance_meters > 0:
+            completion_percentage = min((completed_distance_meters / goal_distance_meters) * 100, 100)
+        else:
+            completion_percentage = 0
+        
+        # Determine pet mood based on completion percentage
+        if completion_percentage <= 33:
+            pet_mood = "upset"
+        elif completion_percentage <= 67:
+            pet_mood = "happy"
+        else:
+            pet_mood = "cheerful"
+        
+        return DailyGoalProgressResponse(
+            success=True,
+            date=today,
+            goal_distance_meters=goal_distance_meters,
+            completed_distance_meters=completed_distance_meters,
+            completion_percentage=round(completion_percentage, 2),
+            pet_mood=pet_mood,
+            message=f"Today's progress: {completed_distance_meters}m / {goal_distance_meters}m"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get daily progress: {str(e)}"
+        )
 
 # Health check
 @router.get("/health")

@@ -72,3 +72,13 @@ class ProfileUpdate(BaseModel):
     birth_date: Optional[date] = None
     height_cm: Optional[PositiveFloat] = None
     weight_kg: Optional[PositiveFloat] = None
+
+# Daily goal progress
+class DailyGoalProgressResponse(BaseModel):
+    success: bool
+    date: date
+    goal_distance_meters: int = Field(description="User's daily goal in meters")
+    completed_distance_meters: int = Field(description="Distance completed today in meters")
+    completion_percentage: float = Field(ge=0, le=100, description="Percentage of goal completed (0-100)")
+    pet_mood: str = Field(description="Pet mood: upset, happy, or cheerful")
+    message: Optional[str] = None
