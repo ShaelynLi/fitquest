@@ -630,7 +630,7 @@ class BackendApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    return await this.makeRequest('/api/users/update_profile', {
+    return await this.makeRequest('/api/users/profile', {
       method: 'PATCH',
       headers,
       body: JSON.stringify(profileData),
