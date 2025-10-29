@@ -41,8 +41,6 @@ export default function ActiveRunScreen() {
     targetDuration,
     currentLocation,
     routePoints,
-    pauseRun,
-    resumeRun,
     completeRun,
   } = useRun();
 
@@ -170,14 +168,7 @@ export default function ActiveRunScreen() {
     return Math.min((duration / targetDuration) * 100, 100);
   };
 
-  // Handle pause/resume
-  const handlePauseResume = () => {
-    if (status === RUN_STATES.RUNNING) {
-      pauseRun();
-    } else if (status === RUN_STATES.PAUSED) {
-      resumeRun();
-    }
-  };
+  // Pause/Resume removed per product request
 
   // Handle stop run with confirmation
   const handleStopRun = () => {
@@ -477,31 +468,8 @@ export default function ActiveRunScreen() {
             </View>
           </View>
 
-          {/* Control Buttons - Now inside metrics container for better spacing */}
+          {/* Control Buttons - Pause/Resume removed */}
           <View style={styles.controlsContainer}>
-            {/* Pause/Resume Button */}
-            <TouchableOpacity
-              style={[
-                globalStyles.buttonSecondary,
-                styles.controlButton,
-                status === RUN_STATES.RUNNING ? styles.pauseButton : styles.resumeButton,
-              ]}
-              onPress={handlePauseResume}
-            >
-              <Ionicons
-                name={status === RUN_STATES.RUNNING ? 'pause' : 'play'}
-                size={24}
-                color={status === RUN_STATES.RUNNING ? colors.aurora.orange : colors.aurora.green}
-              />
-              <Text style={[
-                globalStyles.buttonTextSecondary,
-                styles.controlButtonText,
-                { color: status === RUN_STATES.RUNNING ? colors.aurora.orange : colors.aurora.green },
-              ]}>
-                {status === RUN_STATES.RUNNING ? 'Pause' : 'Resume'}
-              </Text>
-            </TouchableOpacity>
-
             {/* Stop Button */}
             <TouchableOpacity
               style={[globalStyles.buttonPrimary, styles.controlButton, styles.stopButton]}
@@ -568,15 +536,7 @@ export default function ActiveRunScreen() {
 
           </View>
 
-        {/* Status Message for Paused State */}
-        {status === RUN_STATES.PAUSED && (
-          <View style={styles.pausedMessage}>
-            <Ionicons name="pause-circle" size={24} color={colors.aurora.orange} />
-            <Text style={styles.pausedText}>
-              Run paused. Tap Resume to continue tracking.
-            </Text>
-          </View>
-        )}
+        {/* Paused state message removed */}
         </View>
       </ScrollView>
     </View>
@@ -851,9 +811,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     marginTop: spacing.xl,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    // Removed top separator for cleaner spacing to match other screens
   },
   controlButton: {
     flex: 1,
@@ -874,7 +832,7 @@ const styles = StyleSheet.create({
     borderColor: colors.aurora.green,
   },
   stopButton: {
-    backgroundColor: colors.aurora.pink,
+    backgroundColor: colors.textPrimary,
   },
 
   // Paused state

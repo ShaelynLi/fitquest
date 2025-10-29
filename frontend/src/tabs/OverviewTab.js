@@ -39,6 +39,7 @@ export default function OverviewTab({ navigation }) {
     getFormattedDuration,
     getLastActivityText,
     loadDailyStats,
+    syncDailyStatsFromBackend,
     isLoading: statsLoading
   } = useDailyStats();
   const {
@@ -150,8 +151,8 @@ export default function OverviewTab({ navigation }) {
         // Sync total running distance from backend
         syncTotalDistanceFromBackend ? syncTotalDistanceFromBackend() : Promise.resolve(),
         
-        // Refresh daily stats (workouts)
-        loadDailyStats ? loadDailyStats() : Promise.resolve(),
+        // Sync daily stats from backend (this will update Activity card)
+        syncDailyStatsFromBackend ? syncDailyStatsFromBackend() : Promise.resolve(),
         
         // Refresh daily food data
         refreshDailyFood ? refreshDailyFood() : Promise.resolve(),

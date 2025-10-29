@@ -19,6 +19,7 @@ const AuthContext = createContext({
   register: async (email, password, displayName) => {},
   completeOnboarding: async (userData) => {},
   logout: async () => {},
+  changePassword: async (currentPassword, newPassword) => {},
 });
 
 export function AuthProvider({ children }) {
@@ -218,7 +219,34 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const value = useMemo(() => ({ user, token, loading, login, register, completeOnboarding, logout, refreshUser }), [user, token, loading]);
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      console.log('🔐 Changing password...');
+      
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      
+      const passwordData = {
+        current_password: currentPassword,
+        new_password: newPassword,
+      };
+      
+      const response = await api.changePassword(passwordData, token);
+      
+      if (response.success) {
+        console.log('✅ Password changed successfully');
+        return response;
+      } else {
+        throw new Error(response.message || 'Failed to change password');
+      }
+    } catch (error) {
+      console.error('❌ Password change failed:', error);
+      throw error;
+    }
+  };
+
+  const value = useMemo(() => ({ user, token, loading, login, register, completeOnboarding, logout, refreshUser, changePassword }), [user, token, loading]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

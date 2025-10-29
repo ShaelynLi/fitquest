@@ -48,9 +48,6 @@ export default function PreRunScreen() {
   const { token, refreshUser } = useAuth();
   const { loadDailyStats } = useDailyStats();
 
-  const [showGoalModal, setShowGoalModal] = useState(false);
-  const [goalType, setGoalType] = useState('distance'); // 'distance' or 'time'
-  const [goalValue, setGoalValue] = useState('');
   const [currentLocation, setCurrentLocation] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -138,7 +135,7 @@ export default function PreRunScreen() {
         console.log('📊 Weekly stats loaded:', {
           runs: weekWorkouts.length,
           distance: (totalDistance / 1000).toFixed(1) + ' km',
-          duration: formatDuration(totalDuration),
+          duration: formatWeeklyTime(totalDuration),
         });
       }
     } catch (error) {
@@ -187,42 +184,6 @@ export default function PreRunScreen() {
     }
   };
 
-  // Handle goal setting
-  const handleSetGoal = () => {
-    const value = parseFloat(goalValue);
-    if (isNaN(value) || value <= 0) {
-      Alert.alert('Invalid Goal', 'Please enter a valid positive number.');
-      return;
-    }
-
-    if (goalType === 'distance') {
-      setTargetDistance(value * 1000); // Convert km to meters
-    } else {
-      setTargetDuration(value * 60); // Convert minutes to seconds
-    }
-
-    setShowGoalModal(false);
-    setGoalValue('');
-  };
-
-  // Clear goals
-  const handleClearGoals = () => {
-    setTargetDistance(null);
-    setTargetDuration(null);
-  };
-
-  // Format display values
-  const formatDistance = (meters) => {
-    if (!meters) return null;
-    return `${(meters / 1000).toFixed(1)} km`;
-  };
-
-  const formatDuration = (seconds) => {
-    if (!seconds) return null;
-    const minutes = Math.round(seconds / 60);
-    return `${minutes} min`;
-  };
-
   // Format time for weekly stats display
   const formatWeeklyTime = (seconds) => {
     if (!seconds || seconds === 0) return '0:00';
@@ -236,28 +197,8 @@ export default function PreRunScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Location-Aware Background */}
-      <View style={styles.mapBackground}>
-        {/* Beautiful gradient suggesting outdoor/running environment */}
-        <View style={styles.runningGradient} />
-
-        {/* Location indicator if available */}
-        {currentLocation && (
-          <View style={styles.locationIndicator}>
-            <Ionicons name="location" size={24} color={colors.white} />
-            <Text style={styles.locationText}>
-              Ready to track your route
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Faded Overlay */}
-      <View style={styles.mapOverlay} />
-
-      {/* Content Container */}
       <ScrollView 
-        style={styles.contentContainer} 
+        style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -268,16 +209,8 @@ export default function PreRunScreen() {
           />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={globalStyles.pageTitle}>Ready to Run?</Text>
-          <Text style={globalStyles.bodyText}>
-            Track your route with GPS and monitor your progress in real-time
-          </Text>
-        </View>
-
         {/* Location Status */}
-        <View style={[globalStyles.card, styles.transparentCard]}>
+        <View style={globalStyles.card}>
           <View style={styles.statusRow}>
             <Ionicons
               name={locationPermission === 'granted' ? 'location' : 'location-outline'}
@@ -301,39 +234,8 @@ export default function PreRunScreen() {
           </View>
         </View>
 
-        {/* Current Goals */}
-        {(targetDistance || targetDuration) && (
-          <View style={[globalStyles.card, styles.transparentCard]}>
-            <View style={styles.goalsHeader}>
-              <Text style={globalStyles.sectionSubheader}>Today's Goals</Text>
-              <TouchableOpacity onPress={handleClearGoals}>
-                <Text style={styles.clearGoalsText}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.goalsContainer}>
-              {targetDistance && (
-                <View style={styles.goalItem}>
-                  <Ionicons name="location" size={20} color={colors.aurora.blue} />
-                  <Text style={globalStyles.bodyText}>
-                    Distance: {formatDistance(targetDistance)}
-                  </Text>
-                </View>
-              )}
-              {targetDuration && (
-                <View style={styles.goalItem}>
-                  <Ionicons name="time" size={20} color={colors.aurora.violet} />
-                  <Text style={globalStyles.bodyText}>
-                    Time: {formatDuration(targetDuration)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-
         {/* Quick Stats */}
-        <View style={[globalStyles.card, styles.transparentCard]}>
+        <View style={globalStyles.card}>
           <Text style={globalStyles.sectionSubheader}>This Week</Text>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -353,17 +255,6 @@ export default function PreRunScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
-          {/* Set Goal Button */}
-          <TouchableOpacity
-            style={globalStyles.buttonSecondary}
-            onPress={() => setShowGoalModal(true)}
-          >
-            <Ionicons name="flag" size={20} color={colors.textPrimary} />
-            <Text style={[globalStyles.buttonTextSecondary, styles.buttonSpacing]}>
-              Set Goal
-            </Text>
-          </TouchableOpacity>
-
           {/* Start Run Button - Large and prominent */}
           <TouchableOpacity
             style={[
@@ -395,210 +286,20 @@ export default function PreRunScreen() {
           </View>
         )}
       </ScrollView>
-
-      {/* Goal Setting Modal */}
-      <Modal
-        visible={showGoalModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={globalStyles.screenContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowGoalModal(false)}>
-              <Text style={globalStyles.buttonTextSecondary}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={globalStyles.sectionSubheader}>Set Goal</Text>
-            <TouchableOpacity onPress={handleSetGoal}>
-              <Text style={globalStyles.buttonTextPrimary}>Save</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={globalStyles.contentContainer}>
-            {/* Goal Type Selection */}
-            <View style={styles.goalTypeContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.goalTypeButton,
-                  goalType === 'distance' && styles.goalTypeButtonActive,
-                ]}
-                onPress={() => setGoalType('distance')}
-              >
-                <Ionicons
-                  name="location"
-                  size={24}
-                  color={goalType === 'distance' ? colors.white : colors.textPrimary}
-                />
-                <Text style={[
-                  styles.goalTypeText,
-                  goalType === 'distance' && styles.goalTypeTextActive,
-                ]}>
-                  Distance
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.goalTypeButton,
-                  goalType === 'time' && styles.goalTypeButtonActive,
-                ]}
-                onPress={() => setGoalType('time')}
-              >
-                <Ionicons
-                  name="time"
-                  size={24}
-                  color={goalType === 'time' ? colors.white : colors.textPrimary}
-                />
-                <Text style={[
-                  styles.goalTypeText,
-                  goalType === 'time' && styles.goalTypeTextActive,
-                ]}>
-                  Time
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Goal Value Input */}
-            <View style={styles.inputContainer}>
-              <Text style={globalStyles.bodyText}>
-                Target {goalType === 'distance' ? 'Distance (km)' : 'Time (minutes)'}
-              </Text>
-              <TextInput
-                style={styles.goalInput}
-                value={goalValue}
-                onChangeText={setGoalValue}
-                placeholder={goalType === 'distance' ? '5.0' : '30'}
-                keyboardType="numeric"
-                placeholderTextColor={colors.textTertiary}
-              />
-            </View>
-
-            {/* Quick Goal Presets */}
-            <View style={styles.presetsContainer}>
-              <Text style={globalStyles.secondaryText}>Quick Goals</Text>
-              <View style={styles.presetButtons}>
-                {goalType === 'distance' ? (
-                  <>
-                    <TouchableOpacity
-                      style={styles.presetButton}
-                      onPress={() => setGoalValue('1')}
-                    >
-                      <Text style={styles.presetButtonText}>1 km</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.presetButton}
-                      onPress={() => setGoalValue('5')}
-                    >
-                      <Text style={styles.presetButtonText}>5 km</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.presetButton}
-                      onPress={() => setGoalValue('10')}
-                    >
-                      <Text style={styles.presetButtonText}>10 km</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={styles.presetButton}
-                      onPress={() => setGoalValue('15')}
-                    >
-                      <Text style={styles.presetButtonText}>15 min</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.presetButton}
-                      onPress={() => setGoalValue('30')}
-                    >
-                      <Text style={styles.presetButtonText}>30 min</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.presetButton}
-                      onPress={() => setGoalValue('60')}
-                    >
-                      <Text style={styles.presetButtonText}>60 min</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Container and Map
+  // Container
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  mapBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-  },
-  runningGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.aurora.blue,
-    opacity: 0.8,
-    // Create a subtle pattern suggesting a running track/path
-  },
-  locationIndicator: {
-    position: 'absolute',
-    top: 100,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingVertical: spacing.md,
-    marginHorizontal: spacing.xl,
-    borderRadius: 12,
-  },
-  locationText: {
-    color: colors.white,
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.medium,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  mapOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.background,
-    opacity: 0.85, // Faded overlay to make content readable
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
-  },
-  transparentCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', // Semi-transparent background
-    backdropFilter: 'blur(10px)', // Blur effect (iOS only)
-  },
 
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    paddingTop: spacing.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', // Semi-transparent background
-    borderRadius: 16,
-    padding: spacing.lg,
-    marginHorizontal: spacing.md,
+  scrollView: {
+    flex: 1,
+    padding: spacing.md,
   },
 
   // Status Row
@@ -611,10 +312,18 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
   enableButton: {
-    backgroundColor: colors.aurora.blue,
-    paddingVertical: spacing.xs,
+    backgroundColor: colors.textPrimary,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: 12,
+    borderRadius: 20,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   enableButtonText: {
     fontSize: typography.sizes.sm,
@@ -623,26 +332,6 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 
-  // Goals
-  goalsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  clearGoalsText: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.body,
-    color: colors.aurora.pink,
-  },
-  goalsContainer: {
-    gap: spacing.sm,
-  },
-  goalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
 
   // Stats
   statsRow: {
@@ -659,19 +348,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.xl,
   },
-  buttonSpacing: {
-    marginLeft: spacing.sm,
-  },
 
   // Start Button - Extra prominent
   startButton: {
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.lg,
     borderRadius: 20,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   disabledButton: {
     backgroundColor: colors.gray[400],
@@ -685,7 +371,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   startButtonText: {
-    fontSize: typography.sizes.xl,
+    fontSize: typography.sizes.lg,
     fontFamily: typography.body,
     fontWeight: typography.weights.bold,
     color: colors.white,
@@ -700,6 +386,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: spacing.md,
     gap: spacing.sm,
+    marginHorizontal: spacing.md,
   },
   errorText: {
     fontSize: typography.sizes.sm,
@@ -708,87 +395,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Modal
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-
-  // Goal Type Selection
-  goalTypeContainer: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  goalTypeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: spacing.sm,
-  },
-  goalTypeButtonActive: {
-    backgroundColor: colors.textPrimary,
-    borderColor: colors.textPrimary,
-  },
-  goalTypeText: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-  },
-  goalTypeTextActive: {
-    color: colors.white,
-  },
-
-  // Input
-  inputContainer: {
-    marginBottom: spacing.xl,
-  },
-  goalInput: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: spacing.md,
-    fontSize: typography.sizes.lg,
-    fontFamily: typography.body,
-    color: colors.textPrimary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-  },
-
-  // Presets
-  presetsContainer: {
-    marginBottom: spacing.xl,
-  },
-  presetButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  presetButton: {
-    flex: 1,
-    backgroundColor: colors.gray[100],
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  presetButtonText: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.medium,
-    color: colors.textPrimary,
-  },
 });

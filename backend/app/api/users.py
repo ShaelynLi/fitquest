@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from firebase_admin import auth as firebase_auth, firestore
 from app.core.firebase import db
 from app.dependencies.auth import get_current_user
-from app.schemas.users import ProfileUpdate, OnboardingRequest, OnboardingResponse
+from app.schemas.users import ProfileUpdate, OnboardingRequest, OnboardingResponse, PasswordChangeRequest, PasswordChangeResponse
 import httpx
 from app.core.settings import settings
 
@@ -141,12 +141,21 @@ def get_profile(user=Depends(get_current_user)):
         "uid": uid,
         "email": data.get("email"),
         "displayName": data.get("displayName"),
+        "firstName": data.get("firstName"),
+        "lastName": data.get("lastName"),
         "emailVerified": data.get("emailVerified", False),
         "gender": data.get("gender"),
         "birthDate": data.get("birthDate"),
         "heightCm": data.get("heightCm"),
         "weightKg": data.get("weightKg"),
-        "healthGoal": data.get("healthGoal"),
+        "activityLevel": data.get("activityLevel"),
+        "primaryGoal": data.get("primaryGoal"),
+        "targetWeight": data.get("targetWeight"),
+        "weeklyRunGoal": data.get("weeklyRunGoal"),
+        "petRewardGoal": data.get("petRewardGoal"),
+        "units": data.get("units"),
+        "notifications": data.get("notifications"),
+        "dailyCalories": data.get("dailyCalories"),
         "createdAt": data.get("createdAt"),
         "updatedAt": data.get("updatedAt"),
     }
@@ -158,16 +167,38 @@ def update_profile(payload: ProfileUpdate, user=Depends(get_current_user)):
     """
     uid = user.get("uid")
     update_map = {}
+    
+    # Basic Information
     if payload.display_name is not None:
         update_map["displayName"] = payload.display_name
     if payload.gender is not None:
         update_map["gender"] = payload.gender
     if payload.birth_date is not None:
         update_map["birthDate"] = payload.birth_date.isoformat()
+    
+    # Health Metrics
     if payload.height_cm is not None:
         update_map["heightCm"] = float(payload.height_cm)
     if payload.weight_kg is not None:
         update_map["weightKg"] = float(payload.weight_kg)
+    if payload.activity_level is not None:
+        update_map["activityLevel"] = payload.activity_level
+    
+    # Fitness Goals
+    if payload.primary_goal is not None:
+        update_map["primaryGoal"] = payload.primary_goal
+    if payload.target_weight_kg is not None:
+        update_map["targetWeight"] = float(payload.target_weight_kg)
+    if payload.weekly_run_goal is not None:
+        update_map["weeklyRunGoal"] = payload.weekly_run_goal
+    if payload.pet_reward_goal is not None:
+        update_map["petRewardGoal"] = payload.pet_reward_goal
+    
+    # Preferences
+    if payload.units is not None:
+        update_map["units"] = payload.units
+    if payload.notifications is not None:
+        update_map["notifications"] = payload.notifications
 
     if not update_map:
         return {"updated": False, "message": "No valid fields provided"}
@@ -180,6 +211,52 @@ def update_profile(payload: ProfileUpdate, user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Failed to update profile: {e}")
 
     return {"updated": True}
+
+# Password change endpoint
+@router.post("/change-password", response_model=PasswordChangeResponse)
+def change_password(payload: PasswordChangeRequest, user=Depends(get_current_user)):
+    """
+    Change user password
+    """
+    uid = user.get("uid")
+    email = user.get("email")
+    
+    try:
+        # First, verify the current password by attempting to sign in
+        verify_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={settings.FIREBASE_WEB_API_KEY}"
+        verify_payload = {
+            "email": email,
+            "password": payload.current_password,
+            "returnSecureToken": True
+        }
+        
+        verify_response = httpx.post(verify_url, json=verify_payload, timeout=10.0)
+        
+        if verify_response.status_code != 200:
+            return PasswordChangeResponse(
+                success=False,
+                message="Current password is incorrect"
+            )
+        
+        # If current password is correct, update to new password using Firebase Admin SDK
+        firebase_auth.update_user(uid, password=payload.new_password)
+        
+        return PasswordChangeResponse(
+            success=True,
+            message="Password changed successfully"
+        )
+        
+    except firebase_auth.UserNotFoundError:
+        return PasswordChangeResponse(
+            success=False,
+            message="User not found"
+        )
+    except Exception as e:
+        print(f"❌ Password change error: {e}")
+        return PasswordChangeResponse(
+            success=False,
+            message=f"Failed to change password: {str(e)}"
+        )
 
 # Health check
 @router.get("/health")

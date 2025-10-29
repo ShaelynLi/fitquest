@@ -133,62 +133,7 @@ export default function RunSummaryScreen() {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Calculate achievements
-  const getAchievements = () => {
-    const achievements = [];
-
-    // Goal achievements
-    if (targetDistance && distance >= targetDistance) {
-      achievements.push({
-        icon: 'checkmark-circle',
-        text: 'Distance Goal Achieved!',
-        color: colors.aurora.green,
-      });
-    }
-
-    if (targetDuration && duration >= targetDuration) {
-      achievements.push({
-        icon: 'checkmark-circle',
-        text: 'Time Goal Achieved!',
-        color: colors.aurora.green,
-      });
-    }
-
-    // Distance milestones
-    if (distance >= 5000) {
-      achievements.push({
-        icon: 'medal',
-        text: '5K Completed!',
-        color: colors.aurora.blue,
-      });
-    } else if (distance >= 1000) {
-      achievements.push({
-        icon: 'medal',
-        text: '1K Completed!',
-        color: colors.aurora.teal,
-      });
-    }
-
-    // Time milestones
-    if (duration >= 1800) { // 30 minutes
-      achievements.push({
-        icon: 'time',
-        text: '30 Minutes Running!',
-        color: colors.aurora.violet,
-      });
-    }
-
-    // First run
-    if (achievements.length === 0) {
-      achievements.push({
-        icon: 'trophy',
-        text: 'First Run Complete!',
-        color: colors.aurora.orange,
-      });
-    }
-
-    return achievements;
-  };
+  // Achievements removed per product request
 
   // Get performance insights
   const getInsights = () => {
@@ -230,25 +175,8 @@ export default function RunSummaryScreen() {
     return insights;
   };
 
-  // Handle save run (future: integrate with backend)
-  const handleSaveRun = () => {
-    Alert.alert(
-      'Run Saved',
-      'Your run has been saved to your history.',
-      [{ text: 'OK', onPress: resetRun }]
-    );
-  };
+  // Share/Save actions removed; run is saved automatically when completed
 
-  // Handle share (future: implement sharing)
-  const handleShare = () => {
-    Alert.alert(
-      'Share Run',
-      'Sharing functionality will be implemented in a future update.',
-      [{ text: 'OK' }]
-    );
-  };
-
-  const achievements = getAchievements();
   const insights = getInsights();
 
   return (
@@ -256,65 +184,39 @@ export default function RunSummaryScreen() {
       <ScrollView style={globalStyles.contentContainer}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={globalStyles.pageTitle}>Run Complete!</Text>
-          <Text style={globalStyles.bodyText}>
-            Great job! Here's your run summary.
-          </Text>
+          <Text style={globalStyles.pageTitle}>Run Complete</Text>
         </View>
 
-        {/* Achievements */}
-        {achievements.length > 0 && (
-          <View style={globalStyles.cardLarge}>
-            <Text style={globalStyles.sectionHeader}>🎉 Achievements</Text>
-            <View style={styles.achievementsContainer}>
-              {achievements.map((achievement, index) => (
-                <View key={index} style={styles.achievementItem}>
-                  <Ionicons
-                    name={achievement.icon}
-                    size={24}
-                    color={achievement.color}
-                  />
-                  <Text style={[styles.achievementText, { color: achievement.color }]}>
-                    {achievement.text}
-                  </Text>
-                </View>
-              ))}
-            </View>
+        {/* Achievements section removed */}
+
+        {/* Main Stats - no outer card wrapper and no section title */}
+        <View style={styles.statsGrid}>
+          {/* Time */}
+          <View style={styles.statCard}>
+            <Ionicons name="time" size={32} color={colors.aurora.blue} />
+            <Text style={styles.statValue}>{formatTime(duration)}</Text>
+            <Text style={styles.statLabel}>Total Time</Text>
           </View>
-        )}
 
-        {/* Main Stats */}
-        <View style={globalStyles.card}>
-          <Text style={globalStyles.sectionHeader}>Run Statistics</Text>
+          {/* Distance */}
+          <View style={styles.statCard}>
+            <Ionicons name="location" size={32} color={colors.aurora.green} />
+            <Text style={styles.statValue}>{formatDistance(distance)}</Text>
+            <Text style={styles.statLabel}>Distance (km)</Text>
+          </View>
 
-          <View style={styles.statsGrid}>
-            {/* Time */}
-            <View style={styles.statCard}>
-              <Ionicons name="time" size={32} color={colors.aurora.blue} />
-              <Text style={styles.statValue}>{formatTime(duration)}</Text>
-              <Text style={styles.statLabel}>Total Time</Text>
-            </View>
+          {/* Pace */}
+          <View style={styles.statCard}>
+            <Ionicons name="speedometer" size={32} color={colors.aurora.violet} />
+            <Text style={styles.statValue}>{formatPace(averagePace)}</Text>
+            <Text style={styles.statLabel}>Avg Pace (/km)</Text>
+          </View>
 
-            {/* Distance */}
-            <View style={styles.statCard}>
-              <Ionicons name="location" size={32} color={colors.aurora.green} />
-              <Text style={styles.statValue}>{formatDistance(distance)}</Text>
-              <Text style={styles.statLabel}>Distance (km)</Text>
-            </View>
-
-            {/* Pace */}
-            <View style={styles.statCard}>
-              <Ionicons name="speedometer" size={32} color={colors.aurora.violet} />
-              <Text style={styles.statValue}>{formatPace(averagePace)}</Text>
-              <Text style={styles.statLabel}>Avg Pace (/km)</Text>
-            </View>
-
-            {/* Calories */}
-            <View style={styles.statCard}>
-              <Ionicons name="flame" size={32} color={colors.aurora.orange} />
-              <Text style={styles.statValue}>{calories}</Text>
-              <Text style={styles.statLabel}>Calories</Text>
-            </View>
+          {/* Calories */}
+          <View style={styles.statCard}>
+            <Ionicons name="flame" size={32} color={colors.aurora.orange} />
+            <Text style={styles.statValue}>{calories}</Text>
+            <Text style={styles.statLabel}>Calories</Text>
           </View>
         </View>
 
@@ -381,7 +283,7 @@ export default function RunSummaryScreen() {
 
         {/* Insights */}
         {insights.length > 0 && (
-          <View style={globalStyles.card}>
+          <>
             <Text style={globalStyles.sectionHeader}>Performance Insights</Text>
             <View style={styles.insightsContainer}>
               {insights.map((insight, index) => (
@@ -395,13 +297,12 @@ export default function RunSummaryScreen() {
                 </View>
               ))}
             </View>
-          </View>
+          </>
         )}
 
         {/* Route Map */}
         {routePoints.length > 1 && (
-          <View style={globalStyles.card}>
-            <Text style={globalStyles.sectionHeader}>Your Route</Text>
+          <>
             <View style={styles.mapContainer}>
               {mapRegion && !mapError ? (
                 <MapView
@@ -483,67 +384,19 @@ export default function RunSummaryScreen() {
                 </View>
               )}
             </View>
-          </View>
+          </>
         )}
 
-        {/* Route Details */}
-        <View style={globalStyles.card}>
-          <Text style={globalStyles.sectionHeader}>Route Details</Text>
-          <View style={styles.routeInfo}>
-            <View style={styles.routeItem}>
-              <Ionicons name="pin" size={16} color={colors.textSecondary} />
-              <Text style={globalStyles.secondaryText}>
-                {routePoints.length} GPS points recorded
-              </Text>
-            </View>
-            <View style={styles.routeItem}>
-              <Ionicons name="calendar" size={16} color={colors.textSecondary} />
-              <Text style={globalStyles.secondaryText}>
-                {new Date(startTime).toLocaleDateString()} at {new Date(startTime).toLocaleTimeString()}
-              </Text>
-            </View>
-            {routePoints.length > 1 && (
-              <View style={styles.routeItem}>
-                <Ionicons name="analytics" size={16} color={colors.textSecondary} />
-                <Text style={globalStyles.secondaryText}>
-                  Start: {routePoints[0].latitude.toFixed(6)}, {routePoints[0].longitude.toFixed(6)}
-                </Text>
-              </View>
-            )}
-            {routePoints.length > 1 && (
-              <View style={styles.routeItem}>
-                <Ionicons name="flag" size={16} color={colors.textSecondary} />
-                <Text style={globalStyles.secondaryText}>
-                  End: {routePoints[routePoints.length - 1].latitude.toFixed(6)}, {routePoints[routePoints.length - 1].longitude.toFixed(6)}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
+        {/* Route Details section removed */}
 
-        {/* Action Buttons */}
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.shareButton]}
-            onPress={handleShare}
-          >
-            <Ionicons name="share" size={20} color={colors.aurora.violet} />
-            <Text style={[styles.actionButtonText, { color: colors.aurora.violet }]}>
-              Share
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.saveButton]}
-            onPress={handleSaveRun}
-          >
-            <Ionicons name="checkmark" size={20} color={colors.white} />
-            <Text style={[styles.actionButtonText, { color: colors.white }]}>
-              Save Run
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Share/Save buttons removed */}
       </ScrollView>
+      {/* Complete Button */}
+      <View style={styles.completeFooter}>
+        <TouchableOpacity style={globalStyles.buttonPrimary} onPress={resetRun}>
+          <Text style={globalStyles.buttonTextPrimary}>Complete</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -555,23 +408,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
   },
 
-  // Achievements
-  achievementsContainer: {
-    gap: spacing.md,
-  },
-  achievementItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.gray[50],
-    padding: spacing.md,
-    borderRadius: 12,
-    gap: spacing.md,
-  },
-  achievementText: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.semibold,
-  },
+  // Achievements styles removed
 
   // Stats Grid
   statsGrid: {
@@ -708,57 +545,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
-  // Route Info
-  routeInfo: {
-    gap: spacing.sm,
-  },
-  routeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
+  // Route details styles removed
 
-  // Actions
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.lg,
-    marginTop: spacing.xl,
-    marginBottom: spacing.xl,
+  // Action buttons styles removed
+
+  // Complete footer
+  completeFooter: {
     paddingHorizontal: spacing.md,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    borderRadius: 20,
-    gap: spacing.sm,
-    flex: 1,
-    maxWidth: 150, // Slightly increase width for better appearance
-    minHeight: 56, // Ensure consistent height
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  shareButton: {
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.aurora.violet + '40',
-  },
-  saveButton: {
-    backgroundColor: colors.aurora.green,
-    borderWidth: 2,
-    borderColor: colors.aurora.green,
-  },
-  actionButtonText: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.body,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
   },
 });

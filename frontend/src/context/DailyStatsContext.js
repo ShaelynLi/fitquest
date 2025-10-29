@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from './AuthContext';
+import { api } from '../services';
 
 const DailyStatsContext = createContext();
 
@@ -22,6 +24,7 @@ const DEFAULT_DAILY_STATS = {
 export const DailyStatsProvider = ({ children }) => {
   const [dailyStats, setDailyStats] = useState(DEFAULT_DAILY_STATS);
   const [isLoading, setIsLoading] = useState(true);
+  const { token } = useAuth();
 
   // Get today's date string (YYYY-MM-DD)
   const getTodayString = () => {
@@ -60,6 +63,11 @@ export const DailyStatsProvider = ({ children }) => {
         setDailyStats(newStats);
         await saveDailyStats(newStats);
       }
+      
+      // After loading local data, sync from backend if user is logged in
+      if (token) {
+        await syncDailyStatsFromBackend();
+      }
     } catch (error) {
       console.error('❌ Failed to load daily stats:', error);
       const today = getTodayString();
@@ -80,6 +88,55 @@ export const DailyStatsProvider = ({ children }) => {
       await AsyncStorage.setItem(STORAGE_KEYS.TODAY_DATE, stats.date);
     } catch (error) {
       console.error('❌ Failed to save daily stats:', error);
+    }
+  };
+
+  // Sync daily stats from backend
+  const syncDailyStatsFromBackend = async () => {
+    if (!token) return;
+    
+    try {
+      console.log('🔄 Syncing daily stats from backend...');
+      
+      const today = getTodayString();
+      
+      // Get all workouts from backend
+      const response = await api.getWorkouts(token);
+      
+      if (response && response.workouts) {
+        // Filter workouts for today
+        const todayWorkouts = response.workouts.filter(workout => {
+          const workoutDate = new Date(workout.start_time);
+          const workoutDateString = workoutDate.toISOString().split('T')[0];
+          return workoutDateString === today;
+        });
+
+        // Calculate today's totals
+        const totalDistance = todayWorkouts.reduce((sum, w) => sum + (w.distance_meters || 0), 0);
+        const totalDuration = todayWorkouts.reduce((sum, w) => sum + (w.duration_seconds || 0), 0);
+        const totalCalories = todayWorkouts.reduce((sum, w) => sum + (w.calories_burned || 0), 0);
+        const lastActivity = todayWorkouts.length > 0 ? 
+          Math.max(...todayWorkouts.map(w => new Date(w.start_time).getTime())) : null;
+
+        const backendStats = {
+          date: today,
+          totalDistance,
+          totalDuration,
+          totalCalories,
+          workoutCount: todayWorkouts.length,
+          lastActivity,
+        };
+
+        console.log('📊 Backend daily stats:', backendStats);
+        
+        // Update local state and storage
+        setDailyStats(backendStats);
+        await saveDailyStats(backendStats);
+        
+        console.log('✅ Daily stats synced from backend');
+      }
+    } catch (error) {
+      console.error('❌ Failed to sync daily stats from backend:', error);
     }
   };
 
@@ -185,6 +242,7 @@ export const DailyStatsProvider = ({ children }) => {
     getLastActivityText,
     resetDailyStats,
     loadDailyStats,
+    syncDailyStatsFromBackend,
   };
 
   return (

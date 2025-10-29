@@ -19,6 +19,9 @@ import PlusScreen from './screens/PlusScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import SummaryScreen from './screens/SummaryScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import ChangePasswordScreen from './screens/ChangePasswordScreen';
 import PetCollectionScreen from './screens/PetCollectionScreen';
 import FoodSearchScreen from './screens/FoodSearchScreen';
 import FoodTab from './tabs/FoodTab';
@@ -156,6 +159,9 @@ function RootNavigator() {
       <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="PetCollection" component={PetCollectionScreen} />
       <Stack.Screen name="FoodSearch" component={FoodSearchScreen} />
     </Stack.Navigator>

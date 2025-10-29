@@ -71,12 +71,19 @@ export const GamificationProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Sync total running distance from backend when user logs in
+  // Sync total running distance and pet collection from backend when user logs in
   useEffect(() => {
     if (token && user) {
-      syncTotalDistanceFromBackend();
+      syncPetCollectionFromBackend();
     }
   }, [token, user]);
+
+  // Sync total distance after metersPerBlindBox is updated
+  useEffect(() => {
+    if (token && user && metersPerBlindBox > 0) {
+      syncTotalDistanceFromBackend();
+    }
+  }, [token, user, metersPerBlindBox]);
 
   // Listen for app state changes and refresh user data when app comes to foreground
   useEffect(() => {
@@ -123,9 +130,15 @@ export const GamificationProvider = ({ children }) => {
       if (storedAchievements) setAchievementHistory(JSON.parse(storedAchievements));
       if (storedDistance) setTotalRunDistance(parseInt(storedDistance));
 
-      // Give starter pet if no pets owned
+      // Give starter pet if no pets owned or no active companion
       if (!storedPets || JSON.parse(storedPets).length === 0) {
         await giveStarterPet();
+      } else if (!storedCompanion) {
+        // If user has pets but no active companion, set Pikachu as default
+        const pikachu = PET_COLLECTION.find(pet => pet.name === 'Pikachu');
+        if (pikachu) {
+          setActiveCompanion({ ...pikachu, isStarterPet: true });
+        }
       }
 
     } catch (error) {
@@ -167,6 +180,12 @@ export const GamificationProvider = ({ children }) => {
         await saveToStorage(STORAGE_KEYS.TOTAL_RUN_DISTANCE, totalDistance);
         
         // Check if any new blind boxes should be awarded
+        console.log(`🎯 Blind box calculation debug:`);
+        console.log(`  - Total distance: ${totalDistance}m`);
+        console.log(`  - User's petRewardGoal: ${user?.petRewardGoal}km`);
+        console.log(`  - metersPerBlindBox: ${metersPerBlindBox}m`);
+        console.log(`  - Expected boxes: ${Math.floor(totalDistance / metersPerBlindBox)}`);
+        
         const totalBoxesEarned = Math.floor(totalDistance / metersPerBlindBox);
         const storedBoxes = await AsyncStorage.getItem(STORAGE_KEYS.BLIND_BOXES);
         const currentUnopened = storedBoxes ? parseInt(storedBoxes) : 0;
@@ -176,12 +195,16 @@ export const GamificationProvider = ({ children }) => {
         const storedTotalEarned = await AsyncStorage.getItem('@gamification_total_boxes_earned');
         const previousTotalEarned = storedTotalEarned ? parseInt(storedTotalEarned) : 0;
         
+        console.log(`📊 Blind box tracking:`);
+        console.log(`  - Previous total earned: ${previousTotalEarned}`);
+        console.log(`  - New total earned: ${totalBoxesEarned}`);
+        console.log(`  - Current unopened: ${currentUnopened}`);
+        
         // If backend shows user earned more boxes in total
         if (totalBoxesEarned > previousTotalEarned) {
           const newBoxes = totalBoxesEarned - previousTotalEarned;
           console.log(`🎁 Awarding ${newBoxes} new blind box(es) based on backend data`);
-          console.log(`📊 Previous total earned: ${previousTotalEarned}, New total earned: ${totalBoxesEarned}`);
-          console.log(`📦 Current unopened: ${currentUnopened}, Adding: ${newBoxes}, New total: ${currentUnopened + newBoxes}`);
+          console.log(`📦 Adding: ${newBoxes}, New total: ${currentUnopened + newBoxes}`);
           
           // Add new boxes to existing unopened boxes
           const newUnopened = currentUnopened + newBoxes;
@@ -190,6 +213,8 @@ export const GamificationProvider = ({ children }) => {
           
           // Update total earned tracking
           await AsyncStorage.setItem('@gamification_total_boxes_earned', totalBoxesEarned.toString());
+        } else {
+          console.log(`ℹ️ No new blind boxes earned (${totalBoxesEarned} <= ${previousTotalEarned})`);
         }
         
         return totalDistance;
@@ -200,18 +225,199 @@ export const GamificationProvider = ({ children }) => {
     }
   };
 
-  // Give starter pet (first pet from collection)
+  // Sync pet collection from backend
+  const syncPetCollectionFromBackend = async () => {
+    if (!token) return;
+    
+    try {
+      console.log('🔄 Syncing pet collection from backend...');
+      
+      const response = await api.getPetCollection(token);
+      
+      if (response) {
+        console.log('📊 Backend pet collection data:', response);
+        
+        // Update local state with backend data
+        if (response.user_pets) {
+          // Check if user_pets contains Bulbasaur (old starter pet)
+          let updatedUserPets = response.user_pets;
+          if (updatedUserPets.includes('pokemon_001')) {
+            console.log('🔄 Replacing Bulbasaur in user_pets with Pikachu...');
+            updatedUserPets = updatedUserPets.filter(id => id !== 'pokemon_001');
+            if (!updatedUserPets.includes('pokemon_004')) {
+              updatedUserPets.push('pokemon_004'); // Add Pikachu
+            }
+          }
+          setUserPets(updatedUserPets);
+          await saveToStorage(STORAGE_KEYS.USER_PETS, updatedUserPets);
+        }
+        
+        if (response.blind_boxes !== undefined) {
+          console.log(`📦 Backend blind boxes: ${response.blind_boxes}, Local blind boxes: ${blindBoxes}`);
+          // Only update if backend has more blind boxes or if local is 0
+          if (response.blind_boxes > blindBoxes || blindBoxes === 0) {
+            console.log(`📦 Updating blind boxes from ${blindBoxes} to ${response.blind_boxes}`);
+            setBlindBoxes(response.blind_boxes);
+            await saveToStorage(STORAGE_KEYS.BLIND_BOXES, response.blind_boxes);
+          } else {
+            console.log(`📦 Keeping local blind boxes: ${blindBoxes} (backend: ${response.blind_boxes})`);
+          }
+        }
+        
+        if (response.active_companion) {
+          // Check if active companion is Bulbasaur (old starter pet)
+          if (response.active_companion.id === 'pokemon_001' || response.active_companion.name === 'Bulbasaur') {
+            console.log('🔄 Replacing old Bulbasaur starter with Pikachu...');
+            const pikachu = PET_COLLECTION.find(pet => pet.name === 'Pikachu');
+            if (pikachu) {
+              const pikachuData = { ...pikachu, isStarterPet: true };
+              setActiveCompanion(pikachuData);
+              await saveToStorage(STORAGE_KEYS.ACTIVE_COMPANION, pikachuData);
+            }
+          } else {
+            setActiveCompanion(response.active_companion);
+            await saveToStorage(STORAGE_KEYS.ACTIVE_COMPANION, response.active_companion);
+          }
+        }
+        
+        if (response.achievement_history) {
+          setAchievementHistory(response.achievement_history);
+          await saveToStorage(STORAGE_KEYS.ACHIEVEMENT_HISTORY, response.achievement_history);
+        }
+        
+        // If user has no pets and no active companion, give them Pikachu as starter
+        if ((!response.user_pets || response.user_pets.length === 0) && !response.active_companion) {
+          console.log('🎉 User has no pets, giving Pikachu as starter...');
+          await giveStarterPet();
+        }
+        
+        console.log('✅ Pet collection synced from backend successfully');
+      } else {
+        // If no response from backend, give starter pet
+        console.log('🎉 No backend data, giving Pikachu as starter...');
+        await giveStarterPet();
+      }
+    } catch (error) {
+      console.error('❌ Failed to sync pet collection from backend:', error);
+      // If sync fails, give starter pet
+      console.log('🎉 Backend sync failed, giving Pikachu as starter...');
+      await giveStarterPet();
+    }
+  };
+
+  // Sync pet collection to backend
+  const syncPetCollectionToBackend = async () => {
+    if (!token) return;
+    
+    try {
+      console.log('🔄 Syncing pet collection to backend...');
+      
+      const collectionData = {
+        user_pets: userPets,
+        blind_boxes: blindBoxes,
+        active_companion: activeCompanion,
+        total_run_distance: totalRunDistance,
+        achievement_history: achievementHistory
+      };
+      
+      await api.syncPetCollection(collectionData, token);
+      console.log('✅ Pet collection synced to backend successfully');
+    } catch (error) {
+      console.error('❌ Failed to sync pet collection to backend:', error);
+      // Don't throw error, just log it
+    }
+  };
+
+  // Recalculate blind boxes based on current total distance and user's goal
+  const recalculateBlindBoxes = async () => {
+    if (!token || !user) return;
+    
+    try {
+      console.log('🔄 Recalculating blind boxes based on current goal...');
+      
+      // Get current total distance
+      const response = await api.getWorkouts(token);
+      if (response && response.workouts) {
+        const totalDistance = response.workouts.reduce((sum, workout) => {
+          return sum + (workout.distance_meters || 0);
+        }, 0);
+        
+        console.log(`🎯 Recalculating with:`);
+        console.log(`  - Total distance: ${totalDistance}m`);
+        console.log(`  - User's goal: ${user.petRewardGoal}km (${metersPerBlindBox}m)`);
+        
+        // Calculate how many boxes user should have earned
+        const totalBoxesEarned = Math.floor(totalDistance / metersPerBlindBox);
+        
+        // Get current unopened boxes
+        const storedBoxes = await AsyncStorage.getItem(STORAGE_KEYS.BLIND_BOXES);
+        const currentUnopened = storedBoxes ? parseInt(storedBoxes) : 0;
+        
+        // Get previous total earned
+        const storedTotalEarned = await AsyncStorage.getItem('@gamification_total_boxes_earned');
+        const previousTotalEarned = storedTotalEarned ? parseInt(storedTotalEarned) : 0;
+        
+        console.log(`📊 Recalculation results:`);
+        console.log(`  - Previous total earned: ${previousTotalEarned}`);
+        console.log(`  - New total earned: ${totalBoxesEarned}`);
+        console.log(`  - Current unopened: ${currentUnopened}`);
+        
+        if (totalBoxesEarned > previousTotalEarned) {
+          const newBoxes = totalBoxesEarned - previousTotalEarned;
+          const newUnopened = currentUnopened + newBoxes;
+          
+          console.log(`🎁 Awarding ${newBoxes} new blind box(es)`);
+          console.log(`📦 New total unopened: ${newUnopened}`);
+          
+          setBlindBoxes(newUnopened);
+          await saveToStorage(STORAGE_KEYS.BLIND_BOXES, newUnopened);
+          await AsyncStorage.setItem('@gamification_total_boxes_earned', totalBoxesEarned.toString());
+          
+          // Sync to backend
+          await syncPetCollectionToBackend();
+        } else {
+          console.log(`ℹ️ No new blind boxes earned`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to recalculate blind boxes:', error);
+    }
+  };
+
+  // Give starter pet (Pikachu as default starter)
   const giveStarterPet = async () => {
-    const starterPet = PET_COLLECTION[0]; // Pikachu as starter
-    const newUserPets = [starterPet.id];
+    // Find Pikachu in the collection
+    const pikachu = PET_COLLECTION.find(pet => pet.name === 'Pikachu');
+    if (!pikachu) {
+      console.error('❌ Pikachu not found in PET_COLLECTION');
+      return;
+    }
+
+    const newUserPets = [pikachu.id];
+    const starterPetData = {
+      ...pikachu,
+      isStarterPet: true // Mark as starter pet
+    };
 
     setUserPets(newUserPets);
-    setActiveCompanion(starterPet);
+    setActiveCompanion(starterPetData);
 
     await Promise.all([
       saveToStorage(STORAGE_KEYS.USER_PETS, newUserPets),
-      saveToStorage(STORAGE_KEYS.ACTIVE_COMPANION, starterPet)
+      saveToStorage(STORAGE_KEYS.ACTIVE_COMPANION, starterPetData)
     ]);
+
+    console.log('🎉 Starter Pikachu given to new user');
+
+    // Sync to backend if user is logged in
+    if (token) {
+      try {
+        await syncPetCollectionToBackend();
+        console.log('✅ Starter Pikachu synced to backend');
+      } catch (error) {
+        console.error('❌ Failed to sync starter Pikachu to backend:', error);
+      }
+    }
   };
 
   // Award blind box when user completes running goal
@@ -234,6 +440,26 @@ export const GamificationProvider = ({ children }) => {
       saveToStorage(STORAGE_KEYS.BLIND_BOXES, newBoxCount),
       saveToStorage(STORAGE_KEYS.ACHIEVEMENT_HISTORY, newAchievements)
     ]);
+
+    // Sync to backend if user is logged in
+    if (token) {
+      try {
+        console.log('🔄 Syncing blind box award to backend...');
+        
+        const collectionData = {
+          user_pets: userPets,
+          blind_boxes: newBoxCount, // Use the updated blind box count
+          active_companion: activeCompanion,
+          total_run_distance: totalRunDistance,
+          achievement_history: newAchievements // Use the updated achievements
+        };
+        
+        await api.syncPetCollection(collectionData, token);
+        console.log('✅ Blind box award synced to backend');
+      } catch (error) {
+        console.error('❌ Failed to sync blind box award to backend:', error);
+      }
+    }
 
     return achievement;
   };
@@ -281,6 +507,26 @@ export const GamificationProvider = ({ children }) => {
       saveToStorage(STORAGE_KEYS.ACHIEVEMENT_HISTORY, newAchievements)
     ]);
 
+    // Sync to backend if user is logged in
+    if (token) {
+      try {
+        console.log('🔄 Syncing blind box result to backend...');
+        
+        const collectionData = {
+          user_pets: newUserPets, // Use the updated userPets
+          blind_boxes: newBoxCount, // Use the updated blind box count
+          active_companion: activeCompanion,
+          total_run_distance: totalRunDistance,
+          achievement_history: newAchievements // Use the updated achievements
+        };
+        
+        await api.syncPetCollection(collectionData, token);
+        console.log('✅ Blind box result synced to backend');
+      } catch (error) {
+        console.error('❌ Failed to sync blind box result to backend:', error);
+      }
+    }
+
     return {
       pet: newPet,
       isNew: isNewPet,
@@ -290,12 +536,26 @@ export const GamificationProvider = ({ children }) => {
 
   // Set active companion
   const setActiveCompanionPet = async (pet) => {
-    if (!userPets.includes(pet.id)) {
+    // Allow Pikachu as starter pet even if not in userPets
+    const isPikachu = pet.name === 'Pikachu';
+    const isOwned = userPets.includes(pet.id) || isPikachu;
+    
+    if (!isOwned) {
       throw new Error('Pet not owned by user');
     }
 
     setActiveCompanion(pet);
     await saveToStorage(STORAGE_KEYS.ACTIVE_COMPANION, pet);
+
+    // Sync to backend if user is logged in
+    if (token) {
+      try {
+        await api.setActiveCompanion(pet.id, token);
+        console.log('✅ Active companion synced to backend');
+      } catch (error) {
+        console.error('❌ Failed to sync active companion to backend:', error);
+      }
+    }
   };
 
   // Check and update running goals
@@ -337,17 +597,19 @@ export const GamificationProvider = ({ children }) => {
     await saveToStorage(STORAGE_KEYS.RUNNING_GOALS, newGoals);
   };
 
+
   // Get user's collection stats
   const getCollectionStats = () => {
     const totalPets = PET_COLLECTION.length;
-    const ownedPets = userPets.length;
+    // Include Pikachu as owned if user has no pets (starter pet)
+    const ownedPets = userPets.length === 0 ? 1 : userPets.length;
     const completionRate = totalPets > 0 ? (ownedPets / totalPets) * 100 : 0;
 
     const rarityStats = {};
     Object.keys(RARITY_CONFIG).forEach(rarity => {
       const totalOfRarity = PET_COLLECTION.filter(pet => pet.rarity === rarity).length;
       const ownedOfRarity = PET_COLLECTION.filter(pet =>
-        pet.rarity === rarity && userPets.includes(pet.id)
+        pet.rarity === rarity && (userPets.includes(pet.id) || (userPets.length === 0 && pet.name === 'Pikachu'))
       ).length;
 
       rarityStats[rarity] = {
@@ -367,7 +629,17 @@ export const GamificationProvider = ({ children }) => {
 
   // Get user's owned pets with full data
   const getOwnedPets = () => {
-    return PET_COLLECTION.filter(pet => userPets.includes(pet.id));
+    const ownedPets = PET_COLLECTION.filter(pet => userPets.includes(pet.id));
+    
+    // If user has no pets, include Pikachu as starter pet
+    if (ownedPets.length === 0) {
+      const pikachu = PET_COLLECTION.find(pet => pet.name === 'Pikachu');
+      if (pikachu) {
+        return [{ ...pikachu, isStarterPet: true }];
+      }
+    }
+    
+    return ownedPets;
   };
 
   // Add running distance and award blind boxes automatically
@@ -435,6 +707,9 @@ export const GamificationProvider = ({ children }) => {
     resetGoals,
     addRunningDistance,
     syncTotalDistanceFromBackend,
+    syncPetCollectionFromBackend,
+    syncPetCollectionToBackend,
+    recalculateBlindBoxes,
 
     // Helpers
     getCollectionStats,

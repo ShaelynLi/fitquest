@@ -675,6 +675,11 @@ export const RunProvider = ({ children }) => {
 
   // Update metrics periodically
   const startMetricsTracking = () => {
+    // Prevent duplicate intervals
+    if (metricsIntervalRef.current) {
+      clearInterval(metricsIntervalRef.current);
+      metricsIntervalRef.current = null;
+    }
     metricsIntervalRef.current = setInterval(() => {
       const currentState = stateRef.current;
       if (currentState.status === RUN_STATES.RUNNING) {
@@ -755,6 +760,8 @@ export const RunProvider = ({ children }) => {
       dispatch({ type: RUN_ACTIONS.PAUSE_RUN });
       stopLocationTracking();
       stopPointUpload(); // Stop uploading when paused
+      // Stop metrics updates while paused
+      stopMetricsTracking();
     },
 
     resumeRun: async () => {
@@ -764,6 +771,8 @@ export const RunProvider = ({ children }) => {
       });
       await startLocationTracking();
       startPointUpload(); // Resume uploading when resumed
+      // Resume metrics updates
+      startMetricsTracking();
     },
 
     completeRun: async () => {

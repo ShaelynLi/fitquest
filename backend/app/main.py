@@ -5,6 +5,7 @@ from app.api.auth import router as auth_router
 from app.api.workout import router as workout_router
 from app.api.users import router as users_router
 from app.api.foods import router as foods_router
+from app.api.gamification import router as gamification_router
 from app.core.firebase import db, auth_client
 from app.services.fatsecret import fatsecret_service
 import os
@@ -102,9 +103,11 @@ app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(workout_router, prefix="/workouts", tags=["workouts"])
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(foods_router)
+app.include_router(gamification_router)
 
 # API Routes with /api prefix for Firebase Hosting reverse proxy
 app.include_router(auth_router, prefix="/api/auth", tags=["api-auth"])
 app.include_router(workout_router, prefix="/api/workouts", tags=["api-workouts"])
 app.include_router(users_router, prefix="/api/users", tags=["api-users"])
 app.include_router(foods_router, prefix="/api")
+app.include_router(gamification_router, prefix="/api")

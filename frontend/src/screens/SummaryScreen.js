@@ -32,8 +32,8 @@ const { width } = Dimensions.get('window');
  * - Backend data synchronization
  */
 export default function SummaryScreen({ navigation }) {
-  const { token } = useAuth();
-  const { dailyStats, getFormattedDistance, getFormattedDuration, getLastActivityText } = useDailyStats();
+  const { token, user } = useAuth();
+  const { dailyStats, getFormattedDistance, getFormattedDuration, getLastActivityText, syncDailyStatsFromBackend } = useDailyStats();
   const { dailyFood, getFormattedNutrition, getLastMealText } = useDailyFood();
 
   const currentDate = new Date();
@@ -156,11 +156,11 @@ export default function SummaryScreen({ navigation }) {
     return icons[mealType] || '🍎';
   };
 
-  // Format selected date for display
+  // Format selected date for display (full date with day, month and year)
   const getFormattedDate = () => {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
     ];
 
     const selectedDateObj = new Date(selectedYear, selectedMonth, selectedDate);
@@ -171,6 +171,16 @@ export default function SummaryScreen({ navigation }) {
     } else {
       return `${selectedDate.toString().padStart(2, '0')} ${months[selectedMonth]} ${selectedYear}`;
     }
+  };
+
+  // Format month and year only for calendar title
+  const getFormattedMonthYear = () => {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    return `${months[selectedMonth]} ${selectedYear}`;
   };
 
   // Check if a date has activities
@@ -311,20 +321,19 @@ export default function SummaryScreen({ navigation }) {
           isTodayAndSelected && styles.calendarDateTodaySelected,
         ]}
         onPress={() => {
-          if (isCurrentMonth) {
-            setSelectedDate(dateObj.date);
-            setSelectedMonth(dateObj.month);
-            setSelectedYear(dateObj.year);
-            // Also update view month/year to match the selected date
-            setViewMonth(dateObj.month);
-            setViewYear(dateObj.year);
-            // Reset week offset when selecting a new date
-            setWeekOffset(0);
-            const dateStr = `${dateObj.year}-${(dateObj.month + 1).toString().padStart(2, '0')}-${dateObj.date.toString().padStart(2, '0')}`;
-            loadActivitiesForDate(dateStr);
-            // Close the calendar modal after selecting a date
-            setShowCalendarModal(false);
-          }
+          // Allow clicking any visible date, regardless of month
+          setSelectedDate(dateObj.date);
+          setSelectedMonth(dateObj.month);
+          setSelectedYear(dateObj.year);
+          // Also update view month/year to match the selected date
+          setViewMonth(dateObj.month);
+          setViewYear(dateObj.year);
+          // Reset week offset when selecting a new date
+          setWeekOffset(0);
+          const dateStr = `${dateObj.year}-${(dateObj.month + 1).toString().padStart(2, '0')}-${dateObj.date.toString().padStart(2, '0')}`;
+          loadActivitiesForDate(dateStr);
+          // Close the calendar modal after selecting a date
+          setShowCalendarModal(false);
         }}
       >
         <Text
@@ -421,9 +430,26 @@ export default function SummaryScreen({ navigation }) {
   // Handle refresh
   const onRefresh = async () => {
     setRefreshing(true);
-    const dateStr = `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}-${selectedDate.toString().padStart(2, '0')}`;
-    await loadActivitiesForDate(dateStr, true); // Force refresh
-    setRefreshing(false);
+    try {
+      console.log('🔄 Refreshing summary data...');
+      
+      const dateStr = `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}-${selectedDate.toString().padStart(2, '0')}`;
+      
+      // Run refresh operations in parallel
+      await Promise.all([
+        // Load activities for selected date (this updates Activity Timeline)
+        loadActivitiesForDate(dateStr, true), // Force refresh
+        
+        // Sync daily stats from backend (this updates Daily Summary)
+        syncDailyStatsFromBackend ? syncDailyStatsFromBackend() : Promise.resolve(),
+      ]);
+      
+      console.log('✅ Summary data refreshed');
+    } catch (error) {
+      console.error('❌ Failed to refresh summary data:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Load activities on mount and when date changes with debouncing
@@ -458,10 +484,15 @@ export default function SummaryScreen({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.userInfo}>
-            <View style={styles.avatar}>
+            <TouchableOpacity 
+              style={styles.avatar}
+              onPress={() => navigation.navigate('Profile')}
+            >
               <Ionicons name="person" size={20} color={colors.textSecondary} />
-            </View>
-            <Text style={styles.userName}>Activity Summary</Text>
+            </TouchableOpacity>
+            <Text style={styles.userName}>
+              {user?.displayName || user?.name || 'Activity Summary'}
+            </Text>
           </View>
         </View>
 
@@ -494,7 +525,7 @@ export default function SummaryScreen({ navigation }) {
               </TouchableOpacity>
               
               <Text style={styles.weekCalendarTitle}>
-                {getFormattedDate()}
+                {getFormattedMonthYear()}
               </Text>
               
               <TouchableOpacity 

@@ -53,6 +53,7 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -85,7 +86,10 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="person-outline" size={24} color={colors.textPrimary} />
               <Text style={styles.menuItemText}>Edit Profile</Text>
@@ -93,43 +97,18 @@ export default function ProfileScreen({ navigation }) {
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('Settings')}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="settings-outline" size={24} color={colors.textPrimary} />
               <Text style={styles.menuItemText}>Settings</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
-              <Text style={styles.menuItemText}>Notifications</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
         </View>
 
-        {/* App Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App</Text>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="help-circle-outline" size={24} color={colors.textPrimary} />
-              <Text style={styles.menuItemText}>Help & Support</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="information-circle-outline" size={24} color={colors.textPrimary} />
-              <Text style={styles.menuItemText}>About</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
 
         {/* Sign Out Button */}
         <TouchableOpacity

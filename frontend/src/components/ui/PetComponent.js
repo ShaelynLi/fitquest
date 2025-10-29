@@ -148,12 +148,15 @@ const PetScreen = ({ pet, onPlay, statusMeters = {}, navigation }) => {
     // Use custom sprite URI if provided
     if (pet?.spriteUri) return { uri: pet.spriteUri };
 
+    // Use image URL directly if provided (for new Pokemon data structure)
+    if (pet?.image) return { uri: pet.image };
+
     // Validate Pokemon ID
     const id = String(pet?.pokemonId || '').trim();
     if (!id) return null;
 
     // Determine sprite variant
-    const variant = (pet?.pokemonVariant || 'official-artwork').toLowerCase();
+    const variant = (pet?.pokemonVariant || 'showdown').toLowerCase();
     const base = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
 
     // Sprite variant handling
@@ -165,8 +168,8 @@ const PetScreen = ({ pet, onPlay, statusMeters = {}, navigation }) => {
       // Note: RN Image does not support SVG natively; fallback to PNG
       return { uri: `${base}/other/official-artwork/${id}.png` };
     }
-    // Default: High-quality official artwork (PNG)
-    return { uri: `${base}/other/official-artwork/${id}.png` };
+    // Default: Generation V animated sprites
+    return { uri: `${base}/versions/generation-v/black-white/animated/${id}.gif` };
   };
 
 
@@ -358,30 +361,34 @@ const styles = StyleSheet.create({
   petContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    width: 120,
+    height: 120,
   },
   petSprite: {
-    width: 64,
-    height: 64,
+    width: 120,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: 'transparent',
   },
   petImage: {
-    width: '100%',
-    height: '100%',
+    width: 120,
+    height: 120,
+    maxWidth: 120,
+    maxHeight: 120,
   },
   fallbackText: {
-    fontSize: 48,
+    fontSize: 64,
     textAlign: 'center',
   },
 
   petShadow: {
     position: 'absolute',
-    bottom: -5,
-    width: 48,
-    height: 8,
+    bottom: -8,
+    width: 80,
+    height: 12,
     backgroundColor: '#8B956D',
-    borderRadius: 24,
+    borderRadius: 40,
     opacity: 0.3,
     zIndex: -1,
   },

@@ -619,6 +619,122 @@ class BackendApiService {
   }
 
   /**
+   * Get user profile information
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} User profile data
+   */
+  async getProfile(token) {
+    return await this.makeRequest('/api/users/profile', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  }
+
+  /**
+   * Change user password
+   * @param {Object} passwordData - Current and new password
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Change password response
+   */
+  async changePassword(passwordData, token) {
+    return await this.makeRequest('/api/users/change-password', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(passwordData),
+    });
+  }
+
+  /**
+   * Update user profile information
+   * @param {Object} profileData - Profile data to update
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Update response
+   */
+  async updateProfile(profileData, token) {
+    return await this.makeRequest('/api/users/profile', {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  // ============ GAMIFICATION API METHODS ============
+
+  /**
+   * Sync pet collection data with backend
+   * @param {Object} collectionData - Pet collection data
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Sync response
+   */
+  async syncPetCollection(collectionData, token) {
+    return await this.makeRequest('/api/gamification/sync-collection', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(collectionData),
+    });
+  }
+
+  /**
+   * Get pet collection data from backend
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Pet collection data
+   */
+  async getPetCollection(token) {
+    return await this.makeRequest('/api/gamification/collection', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  }
+
+  /**
+   * Award a pet to user (when opening blind boxes)
+   * @param {string} petId - Pet ID to award
+   * @param {string} reason - Reason for awarding
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Award response
+   */
+  async awardPet(petId, reason = 'Blind Box Opened', token) {
+    return await this.makeRequest('/api/gamification/award-pet', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        pet_id: petId,
+        reason: reason
+      }),
+    });
+  }
+
+  /**
+   * Set active companion pet
+   * @param {string} petId - Pet ID to set as companion
+   * @param {string} token - Auth token
+   * @returns {Promise<Object>} Set companion response
+   */
+  async setActiveCompanion(petId, token) {
+    return await this.makeRequest('/api/gamification/set-companion', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        pet_id: petId
+      }),
+    });
+  }
+
+  /**
    * Update user profile
    * @param {string} token - Auth token
    * @param {Object} profileData - Profile data to update

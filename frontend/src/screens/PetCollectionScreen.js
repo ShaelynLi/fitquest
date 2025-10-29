@@ -29,7 +29,6 @@ export default function PetCollectionScreen({ navigation }) {
     getCollectionStats
   } = useGamification();
 
-  const [filterSeries, setFilterSeries] = useState('all');
   const [filterRarity, setFilterRarity] = useState('all');
 
   const stats = getCollectionStats();
@@ -38,13 +37,35 @@ export default function PetCollectionScreen({ navigation }) {
   const getFilteredPets = () => {
     let filtered = allPets;
 
-    if (filterSeries !== 'all') {
-      filtered = filtered.filter(pet => pet.series === filterSeries);
-    }
-
     if (filterRarity !== 'all') {
       filtered = filtered.filter(pet => pet.rarity === filterRarity);
     }
+
+    // Sort pets: owned pets first, then locked pets
+    // Within each group, sort by rarity (Common -> Rare -> Epic -> Legendary)
+    const rarityOrder = { 'common': 0, 'rare': 1, 'epic': 2, 'legendary': 3 };
+    
+    filtered.sort((a, b) => {
+      // Pikachu is always considered owned as starter pet
+      const aOwned = userPets.includes(a.id) || a.name === 'Pikachu';
+      const bOwned = userPets.includes(b.id) || b.name === 'Pikachu';
+      
+      // First priority: owned vs locked
+      if (aOwned !== bOwned) {
+        return aOwned ? -1 : 1;
+      }
+      
+      // Second priority: rarity (within same ownership status)
+      const aRarityOrder = rarityOrder[a.rarity] || 0;
+      const bRarityOrder = rarityOrder[b.rarity] || 0;
+      
+      if (aRarityOrder !== bRarityOrder) {
+        return aRarityOrder - bRarityOrder;
+      }
+      
+      // Third priority: Pokemon ID (for consistent ordering)
+      return a.id.localeCompare(b.id);
+    });
 
     return filtered;
   };
@@ -52,7 +73,9 @@ export default function PetCollectionScreen({ navigation }) {
   const filteredPets = getFilteredPets();
 
   const handlePetSelect = async (pet) => {
-    const isOwned = userPets.includes(pet.id);
+    // Pikachu is always available as starter pet
+    const isPikachu = pet.name === 'Pikachu';
+    const isOwned = userPets.includes(pet.id) || isPikachu;
 
     if (!isOwned) {
       Alert.alert(
@@ -75,8 +98,10 @@ export default function PetCollectionScreen({ navigation }) {
     }
   };
 
-  const renderPetCard = ({ item: pet }) => {
-    const isOwned = userPets.includes(pet.id);
+  const renderPetCard = ({ item: pet, index }) => {
+    // Pikachu is always considered "owned" as it's the starter pet
+    const isPikachu = pet.name === 'Pikachu';
+    const isOwned = userPets.includes(pet.id) || isPikachu;
     const isActive = activeCompanion?.id === pet.id;
     const rarityConfig = RARITY_CONFIG[pet.rarity];
 
@@ -120,8 +145,8 @@ export default function PetCollectionScreen({ navigation }) {
           <Text style={[styles.petCardName, !isOwned && styles.lockedText]}>
             {isOwned ? pet.name : '???'}
           </Text>
-          <Text style={[styles.petCardSeries, !isOwned && styles.lockedText]}>
-            {isOwned ? pet.series.toUpperCase() : 'LOCKED'}
+          <Text style={[styles.petCardRarity, !isOwned && styles.lockedText]}>
+            {isOwned ? RARITY_CONFIG[pet.rarity].name.toUpperCase() : 'LOCKED'}
           </Text>
           {isOwned && (
             <Text style={styles.petCardElement}>{pet.element}</Text>
@@ -131,22 +156,6 @@ export default function PetCollectionScreen({ navigation }) {
     );
   };
 
-  const renderSeriesFilter = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.filterButton,
-        filterSeries === item.value && styles.activeFilterButton
-      ]}
-      onPress={() => setFilterSeries(item.value)}
-    >
-      <Text style={[
-        styles.filterText,
-        filterSeries === item.value && styles.activeFilterText
-      ]}>
-        {item.label}
-      </Text>
-    </TouchableOpacity>
-  );
 
   const renderRarityFilter = ({ item }) => (
     <TouchableOpacity
@@ -167,14 +176,6 @@ export default function PetCollectionScreen({ navigation }) {
     </TouchableOpacity>
   );
 
-  const seriesFilters = [
-    { label: 'All', value: 'all' },
-    { label: 'Pokémon', value: PET_SERIES.POKEMON },
-    { label: 'Minecraft', value: PET_SERIES.MINECRAFT },
-    { label: 'Labubu', value: PET_SERIES.LABUBU },
-    { label: 'Cats', value: PET_SERIES.CATS },
-    { label: 'Dogs', value: PET_SERIES.DOGS },
-  ];
 
   const rarityFilters = [
     { label: 'All', value: 'all', color: colors.gray[400] },
@@ -217,18 +218,6 @@ export default function PetCollectionScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Series Filter */}
-      <View style={styles.filterSection}>
-        <Text style={styles.filterTitle}>Series</Text>
-        <FlatList
-          data={seriesFilters}
-          renderItem={renderSeriesFilter}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterList}
-          keyExtractor={item => item.value}
-        />
-      </View>
 
       {/* Rarity Filter */}
       <View style={styles.filterSection}>
@@ -410,6 +399,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
     position: 'relative',
+    minHeight: 200, // Ensure consistent height
+    justifyContent: 'space-between', // Distribute content evenly
   },
 
   activePetCard: {
@@ -440,12 +431,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
     position: 'relative',
+    height: 100, // Fixed height for image container
+    justifyContent: 'center', // Center the image vertically
   },
 
   petImage: {
     width: 80,
     height: 80,
     borderRadius: 12,
+    resizeMode: 'contain',
   },
 
   lockedPetImage: {
@@ -475,6 +469,8 @@ const styles = StyleSheet.create({
 
   petCardInfo: {
     alignItems: 'center',
+    height: 60, // Fixed height for info section
+    justifyContent: 'center', // Center content vertically
   },
 
   petCardName: {
@@ -486,7 +482,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  petCardSeries: {
+  petCardRarity: {
     fontSize: typography.sizes.xs,
     fontFamily: typography.body,
     fontWeight: typography.weights.medium,

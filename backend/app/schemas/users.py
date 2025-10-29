@@ -65,10 +65,33 @@ class OnboardingResponse(BaseModel):
     daily_calories: Optional[int] = None
     temp_token: Optional[str] = None
 
+# Password change schema
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=6, max_length=128)
+    new_password: str = Field(min_length=6, max_length=128)
+
+class PasswordChangeResponse(BaseModel):
+    success: bool
+    message: str
+
 # Profile update schemas
 class ProfileUpdate(BaseModel):
+    # Basic Information
     display_name: Optional[str] = None
     gender: Optional[Gender] = None
     birth_date: Optional[date] = None
+    
+    # Health Metrics
     height_cm: Optional[PositiveFloat] = None
     weight_kg: Optional[PositiveFloat] = None
+    activity_level: Optional[ActivityLevel] = None
+    
+    # Fitness Goals
+    primary_goal: Optional[PrimaryGoal] = None
+    target_weight_kg: Optional[PositiveFloat] = None
+    weekly_run_goal: Optional[conint(ge=0, le=200)] = None
+    pet_reward_goal: Optional[conint(ge=1, le=50)] = None
+    
+    # Preferences
+    units: Optional[Units] = None
+    notifications: Optional[bool] = None
