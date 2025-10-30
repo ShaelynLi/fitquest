@@ -25,13 +25,18 @@ export const useGamification = () => {
   return context;
 };
 
-const STORAGE_KEYS = {
-  USER_PETS: '@gamification_user_pets',
-  BLIND_BOXES: '@gamification_blind_boxes',
-  ACTIVE_COMPANION: '@gamification_active_companion',
-  RUNNING_GOALS: '@gamification_running_goals',
-  ACHIEVEMENT_HISTORY: '@gamification_achievements',
-  TOTAL_RUN_DISTANCE: '@gamification_total_run_distance'
+// Get user-specific storage keys
+const getUserStorageKeys = (userId) => {
+  const userSuffix = userId || 'default';
+  return {
+    USER_PETS: `@gamification_user_pets_${userSuffix}`,
+    BLIND_BOXES: `@gamification_blind_boxes_${userSuffix}`,
+    ACTIVE_COMPANION: `@gamification_active_companion_${userSuffix}`,
+    RUNNING_GOALS: `@gamification_running_goals_${userSuffix}`,
+    ACHIEVEMENT_HISTORY: `@gamification_achievements_${userSuffix}`,
+    TOTAL_RUN_DISTANCE: `@gamification_total_run_distance_${userSuffix}`,
+    TOTAL_BOXES_EARNED: `@gamification_total_boxes_earned_${userSuffix}`
+  };
 };
 
 // Default meters per blind box (5km) - used as fallback
@@ -52,10 +57,24 @@ export const GamificationProvider = ({ children }) => {
   const [achievementHistory, setAchievementHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load data from storage on app start
+  // Load data from storage on app start or when user changes
   useEffect(() => {
-    loadGamificationData();
-  }, []);
+    if (user) {
+      loadGamificationData();
+    } else {
+      // Reset gamification data when logged out
+      setUserPets([]);
+      setBlindBoxes(0);
+      setActiveCompanion(null);
+      setTotalRunDistance(0);
+      setRunningGoals({
+        daily: { distance: 5000, completed: false },
+        weekly: { distance: 25000, completed: false },
+        achievements: []
+      });
+      setAchievementHistory([]);
+    }
+  }, [user?.uid]);
 
   // Update metersPerBlindBox when user data changes
   useEffect(() => {
@@ -107,6 +126,7 @@ export const GamificationProvider = ({ children }) => {
     try {
       setIsLoading(true);
 
+      const KEYS = getUserStorageKeys(user?.uid);
       const [
         storedPets,
         storedBoxes,
@@ -115,12 +135,12 @@ export const GamificationProvider = ({ children }) => {
         storedAchievements,
         storedDistance
       ] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.USER_PETS),
-        AsyncStorage.getItem(STORAGE_KEYS.BLIND_BOXES),
-        AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_COMPANION),
-        AsyncStorage.getItem(STORAGE_KEYS.RUNNING_GOALS),
-        AsyncStorage.getItem(STORAGE_KEYS.ACHIEVEMENT_HISTORY),
-        AsyncStorage.getItem(STORAGE_KEYS.TOTAL_RUN_DISTANCE)
+        AsyncStorage.getItem(KEYS.USER_PETS),
+        AsyncStorage.getItem(KEYS.BLIND_BOXES),
+        AsyncStorage.getItem(KEYS.ACTIVE_COMPANION),
+        AsyncStorage.getItem(KEYS.RUNNING_GOALS),
+        AsyncStorage.getItem(KEYS.ACHIEVEMENT_HISTORY),
+        AsyncStorage.getItem(KEYS.TOTAL_RUN_DISTANCE)
       ]);
 
       if (storedPets) setUserPets(JSON.parse(storedPets));
@@ -148,11 +168,15 @@ export const GamificationProvider = ({ children }) => {
     }
   };
 
-  const saveToStorage = async (key, data) => {
+  const saveToStorage = async (keyName, data) => {
     try {
-      await AsyncStorage.setItem(key, JSON.stringify(data));
+      // keyName should be one of: 'USER_PETS', 'BLIND_BOXES', etc.
+      // We'll get the user-specific key from getUserStorageKeys
+      const KEYS = getUserStorageKeys(user?.uid);
+      const actualKey = KEYS[keyName] || keyName; // fallback to keyName if not found
+      await AsyncStorage.setItem(actualKey, JSON.stringify(data));
     } catch (error) {
-      console.error(`Failed to save ${key}:`, error);
+      console.error(`Failed to save ${keyName}:`, error);
     }
   };
 
@@ -177,7 +201,7 @@ export const GamificationProvider = ({ children }) => {
         
         // Update state and storage
         setTotalRunDistance(totalDistance);
-        await saveToStorage(STORAGE_KEYS.TOTAL_RUN_DISTANCE, totalDistance);
+        await saveToStorage('TOTAL_RUN_DISTANCE', totalDistance);
         
         // Check if any new blind boxes should be awarded
         console.log(`🎯 Blind box calculation debug:`);
@@ -187,12 +211,13 @@ export const GamificationProvider = ({ children }) => {
         console.log(`  - Expected boxes: ${Math.floor(totalDistance / metersPerBlindBox)}`);
         
         const totalBoxesEarned = Math.floor(totalDistance / metersPerBlindBox);
-        const storedBoxes = await AsyncStorage.getItem(STORAGE_KEYS.BLIND_BOXES);
+        const KEYS = getUserStorageKeys(user?.uid);
+        const storedBoxes = await AsyncStorage.getItem(KEYS.BLIND_BOXES);
         const currentUnopened = storedBoxes ? parseInt(storedBoxes) : 0;
         
         // Calculate how many boxes user has earned in total vs local tracking
         // We need to track "total boxes earned" separately to avoid losing unopened boxes
-        const storedTotalEarned = await AsyncStorage.getItem('@gamification_total_boxes_earned');
+        const storedTotalEarned = await AsyncStorage.getItem(KEYS.TOTAL_BOXES_EARNED);
         const previousTotalEarned = storedTotalEarned ? parseInt(storedTotalEarned) : 0;
         
         console.log(`📊 Blind box tracking:`);
@@ -209,10 +234,11 @@ export const GamificationProvider = ({ children }) => {
           // Add new boxes to existing unopened boxes
           const newUnopened = currentUnopened + newBoxes;
           setBlindBoxes(newUnopened);
-          await saveToStorage(STORAGE_KEYS.BLIND_BOXES, newUnopened);
+          await saveToStorage('BLIND_BOXES', newUnopened);
           
           // Update total earned tracking
-          await AsyncStorage.setItem('@gamification_total_boxes_earned', totalBoxesEarned.toString());
+          const KEYS = getUserStorageKeys(user?.uid);
+          await AsyncStorage.setItem(KEYS.TOTAL_BOXES_EARNED, totalBoxesEarned.toString());
         } else {
           console.log(`ℹ️ No new blind boxes earned (${totalBoxesEarned} <= ${previousTotalEarned})`);
         }
@@ -249,7 +275,7 @@ export const GamificationProvider = ({ children }) => {
             }
           }
           setUserPets(updatedUserPets);
-          await saveToStorage(STORAGE_KEYS.USER_PETS, updatedUserPets);
+          await saveToStorage('USER_PETS', updatedUserPets);
         }
         
         if (response.blind_boxes !== undefined) {
@@ -258,7 +284,7 @@ export const GamificationProvider = ({ children }) => {
           if (response.blind_boxes > blindBoxes || blindBoxes === 0) {
             console.log(`📦 Updating blind boxes from ${blindBoxes} to ${response.blind_boxes}`);
             setBlindBoxes(response.blind_boxes);
-            await saveToStorage(STORAGE_KEYS.BLIND_BOXES, response.blind_boxes);
+            await saveToStorage('BLIND_BOXES', response.blind_boxes);
           } else {
             console.log(`📦 Keeping local blind boxes: ${blindBoxes} (backend: ${response.blind_boxes})`);
           }
@@ -272,17 +298,17 @@ export const GamificationProvider = ({ children }) => {
             if (pikachu) {
               const pikachuData = { ...pikachu, isStarterPet: true };
               setActiveCompanion(pikachuData);
-              await saveToStorage(STORAGE_KEYS.ACTIVE_COMPANION, pikachuData);
+              await saveToStorage('ACTIVE_COMPANION', pikachuData);
             }
           } else {
             setActiveCompanion(response.active_companion);
-            await saveToStorage(STORAGE_KEYS.ACTIVE_COMPANION, response.active_companion);
+            await saveToStorage('ACTIVE_COMPANION', response.active_companion);
           }
         }
         
         if (response.achievement_history) {
           setAchievementHistory(response.achievement_history);
-          await saveToStorage(STORAGE_KEYS.ACHIEVEMENT_HISTORY, response.achievement_history);
+          await saveToStorage('ACHIEVEMENT_HISTORY', response.achievement_history);
         }
         
         // If user has no pets and no active companion, give them Pikachu as starter
@@ -350,11 +376,12 @@ export const GamificationProvider = ({ children }) => {
         const totalBoxesEarned = Math.floor(totalDistance / metersPerBlindBox);
         
         // Get current unopened boxes
-        const storedBoxes = await AsyncStorage.getItem(STORAGE_KEYS.BLIND_BOXES);
+        const KEYS = getUserStorageKeys(user?.uid);
+        const storedBoxes = await AsyncStorage.getItem(KEYS.BLIND_BOXES);
         const currentUnopened = storedBoxes ? parseInt(storedBoxes) : 0;
         
         // Get previous total earned
-        const storedTotalEarned = await AsyncStorage.getItem('@gamification_total_boxes_earned');
+        const storedTotalEarned = await AsyncStorage.getItem(KEYS.TOTAL_BOXES_EARNED);
         const previousTotalEarned = storedTotalEarned ? parseInt(storedTotalEarned) : 0;
         
         console.log(`📊 Recalculation results:`);
@@ -370,8 +397,9 @@ export const GamificationProvider = ({ children }) => {
           console.log(`📦 New total unopened: ${newUnopened}`);
           
           setBlindBoxes(newUnopened);
-          await saveToStorage(STORAGE_KEYS.BLIND_BOXES, newUnopened);
-          await AsyncStorage.setItem('@gamification_total_boxes_earned', totalBoxesEarned.toString());
+          await saveToStorage('BLIND_BOXES', newUnopened);
+          const KEYS = getUserStorageKeys(user?.uid);
+          await AsyncStorage.setItem(KEYS.TOTAL_BOXES_EARNED, totalBoxesEarned.toString());
           
           // Sync to backend
           await syncPetCollectionToBackend();
@@ -403,8 +431,8 @@ export const GamificationProvider = ({ children }) => {
     setActiveCompanion(starterPetData);
 
     await Promise.all([
-      saveToStorage(STORAGE_KEYS.USER_PETS, newUserPets),
-      saveToStorage(STORAGE_KEYS.ACTIVE_COMPANION, starterPetData)
+      saveToStorage('USER_PETS', newUserPets),
+      saveToStorage('ACTIVE_COMPANION', starterPetData)
     ]);
 
     console.log('🎉 Starter Pikachu given to new user');
@@ -437,8 +465,8 @@ export const GamificationProvider = ({ children }) => {
     setAchievementHistory(newAchievements);
 
     await Promise.all([
-      saveToStorage(STORAGE_KEYS.BLIND_BOXES, newBoxCount),
-      saveToStorage(STORAGE_KEYS.ACHIEVEMENT_HISTORY, newAchievements)
+      saveToStorage('BLIND_BOXES', newBoxCount),
+      saveToStorage('ACHIEVEMENT_HISTORY', newAchievements)
     ]);
 
     // Sync to backend if user is logged in
@@ -502,9 +530,9 @@ export const GamificationProvider = ({ children }) => {
 
     // Save to storage
     await Promise.all([
-      saveToStorage(STORAGE_KEYS.BLIND_BOXES, newBoxCount),
-      saveToStorage(STORAGE_KEYS.USER_PETS, newUserPets),
-      saveToStorage(STORAGE_KEYS.ACHIEVEMENT_HISTORY, newAchievements)
+      saveToStorage('BLIND_BOXES', newBoxCount),
+      saveToStorage('USER_PETS', newUserPets),
+      saveToStorage('ACHIEVEMENT_HISTORY', newAchievements)
     ]);
 
     // Sync to backend if user is logged in
@@ -545,7 +573,7 @@ export const GamificationProvider = ({ children }) => {
     }
 
     setActiveCompanion(pet);
-    await saveToStorage(STORAGE_KEYS.ACTIVE_COMPANION, pet);
+    await saveToStorage('ACTIVE_COMPANION', pet);
 
     // Sync to backend if user is logged in
     if (token) {
@@ -578,7 +606,7 @@ export const GamificationProvider = ({ children }) => {
     }
 
     setRunningGoals(newGoals);
-    await saveToStorage(STORAGE_KEYS.RUNNING_GOALS, newGoals);
+    await saveToStorage('RUNNING_GOALS', newGoals);
 
     return achievements;
   };
@@ -594,7 +622,7 @@ export const GamificationProvider = ({ children }) => {
     }
 
     setRunningGoals(newGoals);
-    await saveToStorage(STORAGE_KEYS.RUNNING_GOALS, newGoals);
+    await saveToStorage('RUNNING_GOALS', newGoals);
   };
 
 
@@ -651,17 +679,67 @@ export const GamificationProvider = ({ children }) => {
     const newBoxes = Math.floor(newTotalDistance / metersPerBlindBox);
     const boxesEarned = newBoxes - oldBoxes;
     
+    console.log(`🎁 Blind box calculation:`);
+    console.log(`  - Old total distance: ${totalRunDistance}m`);
+    console.log(`  - New total distance: ${newTotalDistance}m`);
+    console.log(`  - Meters per blind box: ${metersPerBlindBox}m`);
+    console.log(`  - Old boxes earned: ${oldBoxes}`);
+    console.log(`  - New boxes earned: ${newBoxes}`);
+    console.log(`  - Boxes to award: ${boxesEarned}`);
+    
     // Update total distance
     setTotalRunDistance(newTotalDistance);
-    await saveToStorage(STORAGE_KEYS.TOTAL_RUN_DISTANCE, newTotalDistance);
+    await saveToStorage('TOTAL_RUN_DISTANCE', newTotalDistance);
     
-    // Award blind boxes if earned any
+    // Award ALL blind boxes at once (avoid race condition)
     const achievements = [];
     if (boxesEarned > 0) {
+      // Update blind box count once
+      const newBlindBoxCount = blindBoxes + boxesEarned;
+      setBlindBoxes(newBlindBoxCount);
+      
+      // Create achievements for each box
       for (let i = 0; i < boxesEarned; i++) {
-        const achievement = await awardBlindBox(`Ran ${metersPerBlindBox}m (${metersPerBlindBox / 1000}km)`);
+        const achievement = {
+          id: `${Date.now()}_${i}`,
+          type: 'blind_box_earned',
+          reason: `Ran ${metersPerBlindBox}m (${metersPerBlindBox / 1000}km)`,
+          timestamp: new Date().toISOString(),
+          reward: 'Blind Box'
+        };
         achievements.push(achievement);
       }
+      
+      const newAchievements = [...achievementHistory, ...achievements];
+      setAchievementHistory(newAchievements);
+      
+      // Save to storage
+      await Promise.all([
+        saveToStorage('BLIND_BOXES', newBlindBoxCount),
+        saveToStorage('ACHIEVEMENT_HISTORY', newAchievements)
+      ]);
+      
+      // Sync to backend if user is logged in
+      if (token) {
+        try {
+          console.log(`🔄 Syncing ${boxesEarned} blind box(es) to backend...`);
+          
+          const collectionData = {
+            user_pets: userPets,
+            blind_boxes: newBlindBoxCount,
+            active_companion: activeCompanion,
+            total_run_distance: newTotalDistance,
+            achievement_history: newAchievements
+          };
+          
+          await api.syncPetCollection(collectionData, token);
+          console.log('✅ Blind boxes synced to backend');
+        } catch (error) {
+          console.error('❌ Failed to sync blind boxes to backend:', error);
+        }
+      }
+      
+      console.log(`✅ Awarded ${boxesEarned} blind box(es), new total: ${newBlindBoxCount}`);
     }
     
     return {

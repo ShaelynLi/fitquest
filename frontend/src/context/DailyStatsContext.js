@@ -24,7 +24,16 @@ const DEFAULT_DAILY_STATS = {
 export const DailyStatsProvider = ({ children }) => {
   const [dailyStats, setDailyStats] = useState(DEFAULT_DAILY_STATS);
   const [isLoading, setIsLoading] = useState(true);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+
+  // Get user-specific storage keys
+  const getUserStorageKeys = () => {
+    const userId = user?.uid || 'default';
+    return {
+      DAILY_STATS: `daily_stats_${userId}`,
+      TODAY_DATE: `today_date_${userId}`,
+    };
+  };
 
   // Get today's date string (YYYY-MM-DD)
   const getTodayString = () => {
@@ -37,8 +46,9 @@ export const DailyStatsProvider = ({ children }) => {
     try {
       setIsLoading(true);
       const today = getTodayString();
-      const storedDate = await AsyncStorage.getItem(STORAGE_KEYS.TODAY_DATE);
-      const storedStats = await AsyncStorage.getItem(STORAGE_KEYS.DAILY_STATS);
+      const userKeys = getUserStorageKeys();
+      const storedDate = await AsyncStorage.getItem(userKeys.TODAY_DATE);
+      const storedStats = await AsyncStorage.getItem(userKeys.DAILY_STATS);
 
       // If it's a new day, reset stats
       if (storedDate !== today) {
@@ -84,8 +94,9 @@ export const DailyStatsProvider = ({ children }) => {
   // Save daily stats to storage
   const saveDailyStats = async (stats) => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.DAILY_STATS, JSON.stringify(stats));
-      await AsyncStorage.setItem(STORAGE_KEYS.TODAY_DATE, stats.date);
+      const userKeys = getUserStorageKeys();
+      await AsyncStorage.setItem(userKeys.DAILY_STATS, JSON.stringify(stats));
+      await AsyncStorage.setItem(userKeys.TODAY_DATE, stats.date);
     } catch (error) {
       console.error('❌ Failed to save daily stats:', error);
     }
@@ -228,10 +239,15 @@ export const DailyStatsProvider = ({ children }) => {
     await saveDailyStats(newStats);
   };
 
-  // Load stats on mount
+  // Load stats on mount or when user changes
   useEffect(() => {
-    loadDailyStats();
-  }, []);
+    if (user) {
+      loadDailyStats();
+    } else {
+      // Reset stats when logged out
+      setDailyStats(DEFAULT_DAILY_STATS);
+    }
+  }, [user?.uid, token]);
 
   const value = {
     dailyStats,

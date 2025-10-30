@@ -10,9 +10,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, spacing, typography } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services';
@@ -54,7 +54,13 @@ export default function EditProfileScreen({ navigation }) {
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [tempSelectedDate, setTempSelectedDate] = useState({
+    date: new Date().getDate(),
+    month: new Date().getMonth(),
+    year: new Date().getFullYear()
+  });
+  const [viewMonth, setViewMonth] = useState(new Date().getMonth());
+  const [viewYear, setViewYear] = useState(new Date().getFullYear());
 
   // Load user profile data
   useEffect(() => {
@@ -78,7 +84,13 @@ export default function EditProfileScreen({ navigation }) {
         if (response.birthDate) {
           const date = new Date(response.birthDate);
           birthDate = date.toISOString().split('T')[0]; // YYYY-MM-DD format
-          setSelectedDate(date);
+          setTempSelectedDate({
+            date: date.getDate(),
+            month: date.getMonth(),
+            year: date.getFullYear()
+          });
+          setViewMonth(date.getMonth());
+          setViewYear(date.getFullYear());
         }
 
         setProfileData({
@@ -110,13 +122,119 @@ export default function EditProfileScreen({ navigation }) {
     setProfileData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleDateChange = (event, selectedDate) => {
+  const handleDateSelect = (dateObj) => {
+    // Update temp selected date immediately for visual feedback
+    setTempSelectedDate({
+      date: dateObj.date,
+      month: dateObj.month,
+      year: dateObj.year
+    });
+    console.log('📅 Date being selected:', `${dateObj.year}-${dateObj.month + 1}-${dateObj.date}`);
+  };
+
+  const confirmDateSelection = () => {
+    // Confirm the date selection
+    const dateString = `${tempSelectedDate.year}-${(tempSelectedDate.month + 1).toString().padStart(2, '0')}-${tempSelectedDate.date.toString().padStart(2, '0')}`;
+    updateProfileData('birthDate', dateString);
     setShowDatePicker(false);
-    if (selectedDate) {
-      setSelectedDate(selectedDate);
-      const dateString = selectedDate.toISOString().split('T')[0];
-      updateProfileData('birthDate', dateString);
+    console.log('✅ Date confirmed:', dateString);
+  };
+
+  const cancelDateSelection = () => {
+    // Reset to original date if user cancels
+    if (profileData.birthDate) {
+      const date = new Date(profileData.birthDate);
+      setTempSelectedDate({
+        date: date.getDate(),
+        month: date.getMonth(),
+        year: date.getFullYear()
+      });
+      setViewMonth(date.getMonth());
+      setViewYear(date.getFullYear());
     }
+    setShowDatePicker(false);
+  };
+
+  // Navigate to previous month
+  const goToPreviousMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(viewYear - 1);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+  };
+
+  // Navigate to next month
+  const goToNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(viewYear + 1);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+  };
+
+  // Generate calendar weeks for a specific month
+  const generateCalendarWeeks = (year, month) => {
+    const weeks = [];
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+    for (let i = 0; i < 6; i++) {
+      const week = [];
+      for (let j = 0; j < 7; j++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + (i * 7) + j);
+        week.push({
+          date: date.getDate(),
+          month: date.getMonth(),
+          year: date.getFullYear(),
+          isCurrentMonth: date.getMonth() === month,
+          isToday: date.toDateString() === new Date().toDateString(),
+        });
+      }
+      weeks.push({ dates: week });
+    }
+    return weeks;
+  };
+
+  // Render calendar date
+  const renderCalendarDate = (dateObj, weekIndex, dateIndex) => {
+    const isSelected = dateObj.date === tempSelectedDate.date && 
+                      dateObj.month === tempSelectedDate.month && 
+                      dateObj.year === tempSelectedDate.year;
+    const isToday = dateObj.isToday;
+    const isCurrentMonth = dateObj.isCurrentMonth;
+    
+    const uniqueKey = `date-${weekIndex}-${dateIndex}-${dateObj.date}-${dateObj.month}-${dateObj.year}`;
+    const isTodayAndSelected = isToday && isSelected;
+    
+    return (
+      <TouchableOpacity
+        key={uniqueKey}
+        style={[
+          styles.calendarDateContainer,
+          isSelected && !isToday && styles.calendarDateSelected,
+          isToday && styles.calendarDateToday,
+          isTodayAndSelected && styles.calendarDateTodaySelected,
+        ]}
+        onPress={() => handleDateSelect(dateObj)}
+      >
+        <Text
+          style={[
+            styles.calendarDateText,
+            !isCurrentMonth && styles.calendarDateTextInactive,
+            isSelected && !isToday && styles.calendarDateTextSelected,
+            isToday && styles.calendarDateTextToday,
+          ]}
+        >
+          {dateObj.date}
+        </Text>
+      </TouchableOpacity>
+    );
   };
 
   const handleSave = async () => {
@@ -135,8 +253,8 @@ export default function EditProfileScreen({ navigation }) {
         activity_level: profileData.activityLevel,
         primary_goal: profileData.primaryGoal,
         target_weight_kg: profileData.targetWeight ? parseFloat(profileData.targetWeight) : null,
-        weekly_run_goal: profileData.weeklyRunGoal ? parseInt(profileData.weeklyRunGoal) : null,
-        pet_reward_goal: profileData.petRewardGoal ? parseInt(profileData.petRewardGoal) : null,
+        weekly_run_goal: profileData.weeklyRunGoal ? parseFloat(profileData.weeklyRunGoal) : null,  // Changed to parseFloat
+        pet_reward_goal: profileData.petRewardGoal ? parseFloat(profileData.petRewardGoal) : null,  // Changed to parseFloat
         notifications: profileData.notifications,
       };
 
@@ -215,7 +333,11 @@ export default function EditProfileScreen({ navigation }) {
         onPress={() => setShowDatePicker(true)}
       >
         <Text style={[styles.selectButtonText, !value && styles.selectButtonPlaceholder]}>
-          {value || 'Select date'}
+          {value ? new Date(value).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }) : 'Select date'}
         </Text>
         <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
@@ -272,15 +394,15 @@ export default function EditProfileScreen({ navigation }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Health Metrics</Text>
             
-            {renderInput('Height (cm)', 'heightCm', 'Enter your height', 'numeric')}
-            {renderInput('Weight (kg)', 'weightKg', 'Enter your weight', 'numeric')}
+            {renderInput('Height (cm)', 'heightCm', 'Enter your height', 'decimal-pad')}
+            {renderInput('Weight (kg)', 'weightKg', 'Enter your weight', 'decimal-pad')}
             
             {renderSelectButton('Activity Level', 'activityLevel', profileData.activityLevel, [
               { label: 'Sedentary', value: 'sedentary' },
-              { label: 'Lightly Active', value: 'lightly_active' },
-              { label: 'Moderately Active', value: 'moderately_active' },
+              { label: 'Light', value: 'light' },
+              { label: 'Moderate', value: 'moderate' },
+              { label: 'Active', value: 'active' },
               { label: 'Very Active', value: 'very_active' },
-              { label: 'Extremely Active', value: 'extremely_active' },
             ])}
           </View>
 
@@ -290,30 +412,102 @@ export default function EditProfileScreen({ navigation }) {
             
             {renderSelectButton('Primary Goal', 'primaryGoal', profileData.primaryGoal, [
               { label: 'Weight Loss', value: 'weight_loss' },
-              { label: 'Weight Gain', value: 'weight_gain' },
-              { label: 'Maintain Weight', value: 'maintain_weight' },
-              { label: 'Build Muscle', value: 'build_muscle' },
-              { label: 'Improve Fitness', value: 'improve_fitness' },
+              { label: 'Muscle Gain', value: 'muscle_gain' },
+              { label: 'Endurance', value: 'endurance' },
+              { label: 'General Fitness', value: 'general_fitness' },
             ])}
             
-            {renderInput('Target Weight (kg)', 'targetWeight', 'Enter target weight', 'numeric')}
-            {renderInput('Weekly Run Goal (km)', 'weeklyRunGoal', 'Enter weekly run goal', 'numeric')}
-            {renderInput('Pet Reward Goal (km)', 'petRewardGoal', 'Enter pet reward goal', 'numeric')}
+            {renderInput('Target Weight (kg)', 'targetWeight', 'Enter target weight', 'decimal-pad')}
+            {renderInput('Weekly Run Goal (km)', 'weeklyRunGoal', 'Enter weekly run goal', 'decimal-pad')}
+            {renderInput('Pet Reward Goal (km)', 'petRewardGoal', 'Enter pet reward goal (e.g., 0.2, 1, 5)', 'decimal-pad')}
           </View>
 
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Date Picker Modal */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-          maximumDate={new Date()}
-        />
-      )}
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelDateSelection}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={cancelDateSelection}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={cancelDateSelection}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Select Birth Date</Text>
+              <TouchableOpacity onPress={confirmDateSelection}>
+                <Text style={styles.modalConfirmText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Calendar */}
+            <View style={styles.calendarContainer}>
+              {/* Month Navigation */}
+              <View style={styles.calendarMonthHeader}>
+                <TouchableOpacity 
+                  style={styles.calendarNavButton}
+                  onPress={goToPreviousMonth}
+                >
+                  <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+                
+                <Text style={styles.calendarMonthTitle}>
+                  {['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'][viewMonth]} {viewYear}
+                </Text>
+                
+                <TouchableOpacity 
+                  style={styles.calendarNavButton}
+                  onPress={goToNextMonth}
+                >
+                  <Ionicons name="chevron-forward" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Day Headers */}
+              <View style={styles.calendarDayHeaders}>
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <View key={day} style={styles.calendarDayHeader}>
+                    <Text style={styles.calendarDayHeaderText}>{day}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Calendar Grid */}
+              <ScrollView style={styles.calendarGrid} showsVerticalScrollIndicator={false}>
+                {generateCalendarWeeks(viewYear, viewMonth).map((week, weekIndex) => (
+                  <View key={`week-${weekIndex}`} style={styles.calendarWeek}>
+                    {week.dates.map((dateObj, dateIndex) => 
+                      renderCalendarDate(dateObj, weekIndex, dateIndex)
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Selected Date Display */}
+            <View style={styles.selectedDateDisplay}>
+              <Text style={styles.selectedDateLabel}>Selected Date:</Text>
+              <Text style={styles.selectedDateText}>
+                {new Date(tempSelectedDate.year, tempSelectedDate.month, tempSelectedDate.date).toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -445,5 +639,188 @@ const styles = StyleSheet.create({
 
   selectButtonPlaceholder: {
     color: colors.textTertiary,
+  },
+
+  // Date Picker Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+
+  modalContent: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+
+  modalTitle: {
+    fontSize: typography.sizes.lg,
+    fontFamily: typography.heading,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+
+  modalCancelText: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
+  },
+
+  modalConfirmText: {
+    fontSize: typography.sizes.md,
+    fontFamily: typography.body,
+    color: colors.blue[500],
+    fontWeight: typography.weights.semibold,
+  },
+
+  // Calendar Styles
+  calendarContainer: {
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+
+  calendarMonthHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+
+  calendarNavButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  calendarMonthTitle: {
+    fontSize: typography.sizes.lg,
+    fontFamily: typography.heading,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+
+  calendarDayHeaders: {
+    flexDirection: 'row',
+    marginBottom: spacing.sm,
+  },
+
+  calendarDayHeader: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+
+  calendarDayHeaderText: {
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+  },
+
+  calendarGrid: {
+    maxHeight: 300,
+  },
+
+  calendarWeek: {
+    flexDirection: 'row',
+    marginBottom: spacing.xs,
+  },
+
+  calendarDateContainer: {
+    flex: 1,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    margin: 2,
+  },
+
+  calendarDateSelected: {
+    backgroundColor: colors.blue[500],
+  },
+
+  calendarDateToday: {
+    backgroundColor: colors.gray[200],
+  },
+
+  calendarDateTodaySelected: {
+    backgroundColor: colors.blue[500],
+  },
+
+  calendarDateText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textPrimary,
+  },
+
+  calendarDateTextInactive: {
+    color: colors.textTertiary,
+  },
+
+  calendarDateTextSelected: {
+    color: colors.white,
+    fontWeight: typography.weights.semibold,
+  },
+
+  calendarDateTextToday: {
+    color: colors.textPrimary,
+    fontWeight: typography.weights.semibold,
+  },
+
+  selectedDateDisplay: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    alignItems: 'center',
+  },
+
+  selectedDateLabel: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+
+  selectedDateText: {
+    fontSize: typography.sizes.lg,
+    fontFamily: typography.body,
+    fontWeight: typography.weights.semibold,
+    color: colors.blue[500],
   },
 });

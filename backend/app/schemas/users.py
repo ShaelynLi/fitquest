@@ -1,6 +1,6 @@
 # app/schemas/users.py
 from typing import Optional, Literal
-from pydantic import BaseModel, EmailStr, Field, PositiveFloat, conint
+from pydantic import BaseModel, EmailStr, Field, PositiveFloat, conint, confloat
 from datetime import date
 
 # Common types used across all schemas
@@ -16,8 +16,8 @@ class RegisterRequest(BaseModel):
     display_name: Optional[str] = None
     gender: Gender
     birth_date: date
-    height_cm: PositiveFloat
-    weight_kg: PositiveFloat
+    height_cm: confloat(gt=0, le=300.0)  # cm (supports decimals)
+    weight_kg: confloat(gt=0, le=500.0)  # kg (supports decimals)
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -40,15 +40,15 @@ class OnboardingRequest(BaseModel):
     gender: Gender
     
     # Health Metrics
-    height_cm: PositiveFloat = Field(description="Height in cm")
-    weight_kg: PositiveFloat = Field(description="Weight in kg")
+    height_cm: confloat(gt=0, le=300.0) = Field(description="Height in cm (supports decimals)")
+    weight_kg: confloat(gt=0, le=500.0) = Field(description="Weight in kg (supports decimals)")
     activityLevel: ActivityLevel
     
     # Fitness Goals
     primaryGoal: PrimaryGoal
-    target_weight_kg: Optional[PositiveFloat] = None
-    weeklyRunGoal: Optional[conint(ge=0, le=200)] = None  # km per week
-    petRewardGoal: Optional[conint(ge=1, le=50)] = None  # km to unlock pet box
+    target_weight_kg: Optional[confloat(gt=0, le=500.0)] = None  # kg (supports decimals)
+    weeklyRunGoal: Optional[confloat(ge=0, le=500.0)] = None  # km per week (supports decimals)
+    petRewardGoal: Optional[confloat(ge=0.1, le=100.0)] = None  # km to unlock pet box (supports decimals)
     
     # Preferences
     units: Units = "metric"
@@ -56,7 +56,7 @@ class OnboardingRequest(BaseModel):
     healthKit: bool = False
     
     # Calculated fields
-    dailyCalories: Optional[conint(ge=800, le=5000)] = None
+    dailyCalories: Optional[confloat(ge=800, le=5000)] = None  # calories (supports decimals)
 
 class OnboardingResponse(BaseModel):
     success: bool
@@ -82,15 +82,15 @@ class ProfileUpdate(BaseModel):
     birth_date: Optional[date] = None
     
     # Health Metrics
-    height_cm: Optional[PositiveFloat] = None
-    weight_kg: Optional[PositiveFloat] = None
+    height_cm: Optional[confloat(gt=0, le=300.0)] = None  # cm (supports decimals)
+    weight_kg: Optional[confloat(gt=0, le=500.0)] = None  # kg (supports decimals)
     activity_level: Optional[ActivityLevel] = None
     
     # Fitness Goals
     primary_goal: Optional[PrimaryGoal] = None
-    target_weight_kg: Optional[PositiveFloat] = None
-    weekly_run_goal: Optional[conint(ge=0, le=200)] = None
-    pet_reward_goal: Optional[conint(ge=1, le=50)] = None
+    target_weight_kg: Optional[confloat(gt=0, le=500.0)] = None  # kg (supports decimals)
+    weekly_run_goal: Optional[confloat(ge=0, le=500.0)] = None  # km per week (supports decimals)
+    pet_reward_goal: Optional[confloat(ge=0.1, le=100.0)] = None  # km to unlock pet box (supports decimals)
     
     # Preferences
     units: Optional[Units] = None

@@ -32,7 +32,16 @@ const DEFAULT_DAILY_FOOD = {
 export const DailyFoodProvider = ({ children }) => {
   const [dailyFood, setDailyFood] = useState(DEFAULT_DAILY_FOOD);
   const [isLoading, setIsLoading] = useState(true);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+
+  // Get user-specific storage keys
+  const getUserStorageKeys = () => {
+    const userId = user?.uid || 'default';
+    return {
+      DAILY_FOOD: `daily_food_${userId}`,
+      TODAY_DATE: `today_date_food_${userId}`,
+    };
+  };
 
   // Get today's date string (YYYY-MM-DD)
   const getTodayString = () => {
