@@ -1,36 +1,28 @@
-# node
-node_modules/
-.expo/
-.expo-shared/
-
-# env
-.env
-
-.specstory/
-.cursorindexing/
-
-# Ignore Cursor editor files
-.cursor/
-.cursorindexingignore
-
-# system
+# System
 .DS_Store
 
-.idea/
-
+# Git / IDE
 .git/
+.idea/
+.vscode/
 
-backend/venv
-backend/config
+# Node (repo root)
+node_modules/
 
+# Python caches
 __pycache__/
 *.pyc
 
-
-
-# Python venvs
+# Virtual environments
 .venv/
-backend/.venv/
-
 venv/
+backend/.venv/
+backend/venv/
+
+# Backend config secrets
+backend/config/.env
+backend/config/firebase_service_account.json
+
+# Local env at repo root (if any)
+.env
 
