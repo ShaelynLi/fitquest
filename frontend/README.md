@@ -1,46 +1,54 @@
 # FitQuest Frontend
 
-Mobile application built with React Native and Expo, providing gamified fitness and nutrition tracking.
+Mobile application built with React Native and Expo, providing gamified fitness and nutrition tracking with Pokemon-themed rewards.
 
-**Note: This project currently supports iOS only. Android is not supported at this time.**
+Platform Support: iOS Only  
+This application currently supports iOS devices and simulators. Android is not supported at this time.
 
 ---
 
 ## Tech Stack
 
 ### Core Framework
-- **React Native** 0.81.4 - Mobile framework
-- **Expo** ~54.0.11 - React Native toolchain
-- **React** 19.1.0 - UI library
+- React Native 0.81.4 - Mobile framework
+- Expo ~54.0.11 - React Native toolchain
+- React 19.1.0 - UI library
 
 ### Navigation
-- **@react-navigation/native** 7.1.17 - Navigation core
-- **@react-navigation/native-stack** 7.3.26 - Stack navigation
-- **@react-navigation/bottom-tabs** 7.4.7 - Bottom tab navigation
-- **@react-navigation/material-top-tabs** 7.3.7 - Top tab navigation
+- @react-navigation/native 7.1.17 - Navigation core
+- @react-navigation/native-stack 7.3.26 - Stack navigation
+- @react-navigation/bottom-tabs 7.4.7 - Bottom tab navigation
+- @react-navigation/material-top-tabs 7.3.7 - Top tab navigation
 
 ### UI & Components
-- **@expo/vector-icons** 15.0.2 - Icon library
-- **react-native-svg** 15.12.1 - SVG support
-- **react-native-gesture-handler** 2.28.0 - Gesture handling
+- @expo/vector-icons 15.0.2 - Icon library (Ionicons)
+- react-native-svg 15.12.1 - SVG support for circular progress
+- react-native-gesture-handler 2.28.0 - Gesture handling
+- react-native-safe-area-context 5.6.0 - Safe area insets
+- react-native-screens 4.16.0 - Native screen optimization
 
 ### Maps & Location
-- **expo-location** 19.0.7 - GPS and location services
-- **react-native-maps** 1.20.1 - Map component
+- expo-location 19.0.7 - GPS and location services
+- react-native-maps 1.20.1 - Map component for route visualization
 
 ### Camera & Scanning
-- **expo-camera** 17.0.8 - Camera access
-- **expo-barcode-scanner** 13.0.1 - Barcode scanning
+- expo-camera 17.0.8 - Camera access
+- expo-barcode-scanner 13.0.1 - Barcode scanning for food items
 
 ### Data Persistence
-- **@react-native-async-storage/async-storage** 2.2.0 - Local storage
+- @react-native-async-storage/async-storage 2.2.0 - Local storage
 
 ### Firebase
-- **firebase** 12.1.0 - Firebase SDK (Auth, Firestore)
+- firebase 12.1.0 - Firebase SDK (Authentication, Firestore)
+
+### Utilities
+- @react-native-community/datetimepicker 8.4.4 - Date/time picker
+- expo-notifications 0.32.12 - Push notifications
+- react-native-dotenv 3.4.11 - Environment variable management
 
 ### Fonts
-- **@expo-google-fonts/montserrat** 0.4.2 - Modern sans-serif
-- **@expo-google-fonts/press-start-2p** 0.4.0 - Pixel art style
+- @expo-google-fonts/montserrat 0.4.2 - Modern sans-serif for UI
+- @expo-google-fonts/press-start-2p 0.4.0 - Pixel art style for headings
 
 ---
 
@@ -48,299 +56,320 @@ Mobile application built with React Native and Expo, providing gamified fitness 
 
 ### Prerequisites
 
-1. **Node.js** 18+ and npm
-2. **Expo CLI**: 
-   ```bash
-   npm install -g @expo/cli
-   ```
-3. **iOS Development**:
-   - macOS with Xcode (required for simulator)
-4. **Physical Device Testing**:
-   - iOS: [Expo Go](https://apps.apple.com/app/expo-go/id982107779)
+- macOS (required for iOS development)
+- Node.js 18+ and npm
+- Xcode 14+ (for iOS simulator)
+- Expo CLI: `npm install -g @expo/cli`
+- Expo Go app (for testing on physical devices)
 
 ### Setup Steps
 
-#### 1. Navigate to Frontend Directory
+1. Navigate to frontend directory
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies
+   ```bash
+   npm install
+   ```
+
+3. Configure environment variables
+   
+   Create `frontend/.env`:
+   ```env
+   # Backend API URL
+   BACKEND_URL=http://localhost:8000
+   
+   # For physical device testing, use your machine's local IP:
+   # BACKEND_URL=http://192.168.1.10:8000
+   ```
+
+4. Start development server
+   ```bash
+   npm start
+   ```
+
+5. Run on device
+   ```bash
+   # iOS Simulator (macOS only)
+   npx expo start --ios
+   
+   # Or press 'i' in the terminal after running npm start
+   
+   # Physical iOS device: Scan QR code with Expo Go app
+   ```
+
+---
+
+## Project Architecture
+
+### Directory Structure
+
+```
+frontend/src/
+├── App.js                          # Root navigation and app entry
+├── theme.js                        # Aura Health design system
+│
+├── components/                     # Reusable UI components
+│   ├── index.js                   # Component exports
+│   ├── food/                      # Food-related components
+│   │   └── BarcodeScanner.js      # Barcode scanning functionality
+│   ├── gamification/              # Gamification components
+│   │   └── BlindBoxModal.js       # Blind box opening animation
+│   ├── run/                       # Run tracking components
+│   │   ├── PreRunScreen.js        # Pre-run setup and weekly stats
+│   │   ├── ActiveRunScreen.js     # Live GPS tracking screen
+│   │   └── RunSummaryScreen.js    # Post-run summary and route
+│   └── ui/                        # General UI components
+│       └── PetComponent.js        # Pokemon pet display and animation
+│
+├── screens/                       # Main application screens
+│   ├── WelcomeScreen.js           # Initial welcome screen
+│   ├── LoginScreen.js             # User login
+│   ├── RegisterScreen.js          # New user registration
+│   ├── EmailVerificationScreen.js # Email verification prompt
+│   ├── OnboardingScreen.js        # User profile setup
+│   ├── HomeScreen.js              # Container for nested tabs
+│   ├── PlusScreen.js              # Quick actions
+│   ├── ProfileScreen.js           # User profile and settings
+│   ├── EditProfileScreen.js       # Edit user information
+│   ├── ChangePasswordScreen.js    # Password change
+│   ├── SettingsScreen.js          # App settings
+│   ├── NotificationsScreen.js     # Notification preferences
+│   ├── FoodSearchScreen.js        # Food search and barcode scan
+│   ├── PetCollectionScreen.js     # Pokemon collection view
+│   ├── SummaryScreen.js           # Activity summary with calendar
+│   └── HistoryScreen.js           # Workout history
+│
+├── tabs/                          # Nested tab components (Home screen)
+│   ├── index.js                   # Tab exports
+│   ├── OverviewTab.js             # Pet dashboard and daily stats
+│   ├── FoodTab.js                 # Meal logging interface
+│   └── RunTab.js                  # GPS run tracking interface
+│
+├── context/                       # React Context providers
+│   ├── index.js                   # Context exports
+│   ├── AuthContext.js             # Authentication and user state
+│   ├── RunContext.js              # Run tracking and GPS state
+│   ├── DailyStatsContext.js       # Daily activity statistics
+│   ├── DailyFoodContext.js        # Daily nutrition tracking
+│   └── GamificationContext.js     # Pet collection and blind boxes
+│
+├── services/                      # API and external services
+│   ├── index.js                   # Service exports
+│   └── api.js                     # Backend API integration
+│
+├── config/                        # Configuration files
+│   ├── index.js                   # Config exports
+│   └── firebaseConfig.js          # Firebase client setup
+│
+├── constants/                     # Application constants
+│   ├── index.js                   # Constants exports
+│   └── screens.js                 # Screen name constants
+│
+├── data/                          # Static data
+│   └── pets.js                    # Pokemon collection data
+│
+└── utils/                         # Utility functions
+    └── mockData.js                # Mock food data (fallback)
+```
+
+### Navigation Structure
+
+3-Tab Bottom Navigation:
+- Home: Main dashboard with nested top tabs
+  - Overview: Pokemon companion, daily stats, activity summary
+  - Food: Meal logging with calorie/macro tracking
+  - Run: GPS workout tracking and weekly statistics
+- Plus: Quick actions (Log Food, Start Run)
+- Profile: User settings, edit profile, change password, notifications
+
+Modal Screens (Stack):
+- Food Search
+- Pokemon Collection
+- Summary (Activity Timeline)
+- History
+
+### State Management
+
+Context Providers:
+1. AuthContext: User authentication, login/logout, token refresh
+2. RunContext: GPS tracking, run metrics, route points
+3. DailyStatsContext: Today's workout statistics
+4. DailyFoodContext: Today's meal and nutrition data
+5. GamificationContext: Pokemon collection, blind boxes, companion
+
+### Design System
+
+Aura Health Theme (theme.js):
+- Colors: Aurora gradient palette (pink, blue, purple) with light grey backgrounds
+- Typography: Dual-font system
+  - Headings: Press Start 2P (pixel art)
+  - Body: Montserrat (clean sans-serif)
+- Spacing: Consistent 4px base scale
+- Components: Card-based layout with subtle shadows
+
+---
+
+## Environment Configuration
+
+### Development
+
+Local Backend:
+```env
+BACKEND_URL=http://localhost:8000
+```
+
+Physical Device Testing:
+```env
+# Replace with your machine's local IP
+BACKEND_URL=http://192.168.1.10:8000
+```
+
+### Production
+
+Update `src/services/api.js` with production backend URL:
+```javascript
+const API_BASE_URL = 'https://your-production-api.web.app';
+```
+
+---
+
+## Development Workflow
+
+### Start Development Server
 ```bash
 cd frontend
-```
-
-#### 2. Install Dependencies
-```bash
-npm install
-```
-
-#### 3. Configure Firebase
-
-Edit `src/config/firebaseConfig.js`:
-
-```javascript
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-
-const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-auth-domain",
-  projectId: "your-project-id",
-  storageBucket: "your-storage-bucket",
-  messagingSenderId: "your-messaging-sender-id",
-  appId: "your-app-id"
-};
-
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-```
-
-#### 4. Configure Backend API
-
-Create `.env` file:
-
-```env
-# Backend API base URL
-BACKEND_URL=http://localhost:8000
-
-# For physical device testing (replace with your machine's IP)
-# BACKEND_URL=http://192.168.1.10:8000
-
-# Production
-# BACKEND_URL=https://your-api-url.com
-```
-
-**Find your machine's IP:**
-```bash
-# macOS/Linux
-ifconfig | grep "inet "
-
-# Windows
-ipconfig
-```
-
-#### 5. Start Development Server
-
-```bash
 npm start
-# or
-npx expo start --go
 ```
 
-#### 6. Run on Device
-
-**Option 1: iOS Simulator** (macOS only)
+### Run on iOS Simulator
 ```bash
 npx expo start --ios
+# Or press 'i' after npm start
 ```
 
-**Option 2: Physical iOS Device**
-1. Install Expo Go app on iPhone
+### Run on Physical Device
+1. Install Expo Go from App Store
 2. Scan QR code from terminal
-3. Ensure iPhone and computer on same WiFi
+3. Ensure device is on same WiFi network
 
----
-
-## Project Structure
-
+### Clear Cache
+```bash
+npx expo start --clear
 ```
-frontend/
-├── src/
-│   ├── App.js                   # App entry, navigation setup
-│   │
-│   ├── screens/                 # Application screens
-│   │   ├── WelcomeScreen.js
-│   │   ├── LoginScreen.js
-│   │   ├── RegisterScreen.js
-│   │   ├── OnboardingScreen.js
-│   │   ├── EmailVerificationScreen.js
-│   │   ├── HomeScreen.js
-│   │   ├── ProfileScreen.js
-│   │   ├── HistoryScreen.js
-│   │   ├── SummaryScreen.js
-│   │   ├── PlusScreen.js
-│   │   ├── FoodSearchScreen.js
-│   │   └── PetCollectionScreen.js
-│   │
-│   ├── tabs/                    # Bottom tab content
-│   │   ├── FoodTab.js
-│   │   ├── RunTab.js
-│   │   └── OverviewTab.js
-│   │
-│   ├── components/              # Reusable components
-│   │   ├── food/
-│   │   │   └── BarcodeScanner.js
-│   │   ├── run/
-│   │   │   ├── PreRunScreen.js
-│   │   │   ├── ActiveRunScreen.js
-│   │   │   └── RunSummaryScreen.js
-│   │   ├── gamification/
-│   │   │   └── BlindBoxModal.js
-│   │   └── ui/
-│   │       └── PetComponent.js
-│   │
-│   ├── context/                 # React Context state management
-│   │   ├── AuthContext.js       # Authentication state
-│   │   ├── GamificationContext.js  # Game data
-│   │   ├── DailyStatsContext.js    # Daily statistics
-│   │   ├── DailyFoodContext.js     # Food data
-│   │   └── RunContext.js           # Run tracking state
-│   │
-│   ├── services/                # External services
-│   │   └── api.js              # Backend API client
-│   │
-│   ├── config/                  # Configuration
-│   │   └── firebaseConfig.js   # Firebase setup
-│   │
-│   ├── constants/               # Constants
-│   │   └── screens.js          # Screen name constants
-│   │
-│   ├── data/                    # Static data
-│   │   └── pets.js             # Pet definitions
-│   │
-│   ├── utils/                   # Utility functions
-│   │   └── mockData.js         # Mock data
-│   │
-│   └── theme.js                 # App theme and global styles
-│
-├── assets/                      # Static assets
-│   ├── icon.png
-│   ├── splash-icon.png
-│   ├── adaptive-icon.png
-│   └── favicon.png
-│
-├── ios/                         # iOS native code
-├── app.json                     # Expo configuration
-├── package.json                 # Dependencies and scripts
-├── babel.config.js              # Babel configuration
-└── index.js                     # App registration
-```
-
----
-
-## Key Features
-
-### Authentication System
-- Email/password registration and login
-- Email verification flow
-- Persistent login (AsyncStorage)
-- Automatic token refresh
-
-**Files**: `src/context/AuthContext.js`, `src/screens/Login*.js`
-
-### GPS Workout Tracking
-- Real-time GPS location tracking
-- Distance, pace, time calculation
-- Route visualization (maps)
-- Calories estimation
-
-**Files**: `src/tabs/RunTab.js`, `src/components/run/`, `src/context/RunContext.js`
-
-### Nutrition Logging
-- Food search (FatSecret API)
-- Barcode scanning
-- Custom food entry
-- Meal categorization (breakfast/lunch/dinner/snacks)
-- Daily nutrition summary
-
-**Files**: `src/tabs/FoodTab.js`, `src/screens/FoodSearchScreen.js`, `src/components/food/BarcodeScanner.js`
-
-### Gamification System
-- Pixel art pet collection
-- XP system and pet leveling
-- Pet evolution (level-based)
-- Interactive animations
-
-**Files**: `src/context/GamificationContext.js`, `src/components/ui/PetComponent.js`, `src/screens/PetCollectionScreen.js`
 
 ---
 
 ## Building for Production
 
-### Using EAS Build
+### Using EAS Build (Recommended)
 
-```bash
-# Install EAS CLI
-npm install -g eas-cli
+1. Install EAS CLI
+   ```bash
+   npm install -g eas-cli
+   ```
 
-# Login
-eas login
+2. Configure EAS
+   ```bash
+   eas build:configure
+   ```
 
-# Configure
-eas build:configure
+3. Build for iOS
+   ```bash
+   eas build --platform ios
+   ```
 
-# Build iOS
-eas build --platform ios
-
-# Submit to App Store
-eas submit --platform ios
-```
+4. Submit to App Store
+   ```bash
+   eas submit --platform ios
+   ```
 
 ---
 
 ## Troubleshooting
 
-### Metro Bundler Errors
+### Common Issues
 
-**Problem**: "Unable to resolve module"
+1. **Metro bundler errors**
+   ```bash
+   # Clear cache and restart
+   npx expo start --clear
+   ```
 
-**Fix**:
-```bash
-npx expo start --clear
-rm -rf node_modules && npm install
-```
+2. **Module not found errors**
+   ```bash
+   # Reinstall dependencies
+   rm -rf node_modules
+   npm install
+   ```
 
-### Network Connection Errors
+3. **iOS Simulator not opening**
+   ```bash
+   # Ensure Xcode is installed
+   xcode-select --install
+   
+   # Reset simulator
+   xcrun simctl erase all
+   ```
 
-**Check**:
-1. Backend running? `curl http://localhost:8000/health`
-2. Correct `BACKEND_URL` in `.env`?
-3. Same WiFi network?
+4. **Backend connection issues**
+   - Check `BACKEND_URL` in `.env`
+   - Verify backend is running: `curl http://localhost:8000/health`
+   - For physical device, use local IP instead of localhost
 
-**Fix**:
-```bash
-# Use tunnel mode
-npx expo start --tunnel
-```
+5. **Firebase errors**
+   - Check `src/config/firebaseConfig.js` credentials
+   - Verify Firebase project is properly configured
 
-### iOS Simulator Issues
+---
 
-**Problem**: "Could not find iPhone simulator"
+## Testing Checklist
 
-**Fix**:
-1. Open Xcode
-2. Preferences → Locations
-3. Select Command Line Tools
-4. Restart terminal
+- [ ] User registration and email verification
+- [ ] Login and logout
+- [ ] GPS tracking on run
+- [ ] Food search and barcode scanning
+- [ ] Meal logging with nutrition data
+- [ ] Blind box earning and opening
+- [ ] Pokemon collection display
+- [ ] Profile editing
+- [ ] Password change
+- [ ] Summary calendar view
 
-### iOS Permission Errors
+---
 
-**Location/Camera permission denied**
+## Performance Optimization
 
-**Fix**: Always request permissions:
-```javascript
-const { status } = await Location.requestForegroundPermissionsAsync();
-if (status !== 'granted') {
-  Alert.alert('Permission Denied', 'Please enable location services');
-}
-```
-
-**Note**: Ensure proper permission configurations in `Info.plist` for iOS
+- **AsyncStorage**: Local caching for offline support
+- **Lazy Loading**: Screens load on demand
+- **Image Optimization**: Pokemon sprites optimized for mobile
+- **GPS Throttling**: Location updates every 1 second during runs
+- **Context Memoization**: Prevent unnecessary re-renders
 
 ---
 
 ## Resources
 
-- [React Native Docs](https://reactnative.dev/)
 - [Expo Documentation](https://docs.expo.dev/)
+- [React Native Documentation](https://reactnavigation.org/)
+- [Firebase for React Native](https://rnfirebase.io/)
 - [React Navigation](https://reactnavigation.org/)
-- [React Native Maps](https://github.com/react-native-maps/react-native-maps)
-- [Expo Location](https://docs.expo.dev/versions/latest/sdk/location/)
-- [Firebase JavaScript SDK](https://firebase.google.com/docs/web/setup)
 
 ---
 
 ## Support
 
 For issues:
-1. Check [Troubleshooting](#troubleshooting) section
-2. Review Expo Metro Bundler logs
-3. Verify backend API connection
-4. Ensure all permissions granted
-5. Check `.env` configuration
+1. Check console logs in Metro bundler
+2. Verify backend connection: Check network tab in Expo Dev Tools
+3. Test API endpoints: Use `http://localhost:8000/docs`
+4. Check Firebase Console for auth/database errors
+5. Review Context state with React DevTools
+
+---
+
+## License
+
+This project is part of COMP90018 - Mobile Computing Systems Programming at the University of Melbourne.

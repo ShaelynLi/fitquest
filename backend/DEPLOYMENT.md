@@ -2,28 +2,42 @@
 
 This guide explains how to deploy the FitQuest API to Google Cloud Run with Firebase Hosting as a reverse proxy.
 
-## 🏗️ Architecture
+## Current Status
+
+Production service deployed and operational:
+- Service: `fitquest-api` 
+- Region: `australia-southeast1`
+- URL: https://fitquest-api-404135822508.australia-southeast1.run.app
+- Deployed: September 19, 2025
+- Cost: ~$0/month (scaled to zero)
+
+Quick test:
+```bash
+curl https://fitquest-api-404135822508.australia-southeast1.run.app/health
+```
+
+## Architecture
 
 ```
 Frontend (Firebase Hosting) → Cloud Run (Python API) → Firebase (Auth + Firestore)
 ```
 
-## 📋 Prerequisites
+## Prerequisites
 
-1. **Google Cloud Platform Account**
+1. Google Cloud Platform Account
    - Create a GCP project
    - Enable billing
    - Install [gcloud CLI](https://cloud.google.com/sdk/docs/install)
 
-2. **Docker**
+2. Docker
    - Install Docker Desktop
    - Ensure Docker is running
 
-3. **Firebase Project**
+3. Firebase Project
    - Same Firebase project used for local development
    - Authentication and Firestore already configured
 
-## 🚀 Deployment Steps
+## Deployment Steps
 
 ### Step 1: Configure GCP Project
 
@@ -81,18 +95,19 @@ For production, set up service account authentication:
    GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
    ```
 
-## 🧪 Local Testing
+## Local Testing
 
 Test the Docker build locally:
 
 ```bash
 cd backend
-./test-docker.sh
+docker build -t fitquest-api .
+docker run -p 8080:8080 fitquest-api
 ```
 
 This will build and run the container locally on port 8080.
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -117,7 +132,7 @@ production_origins = [
 ]
 ```
 
-## 🌐 Firebase Hosting Setup
+## Firebase Hosting Setup
 
 Create `firebase.json` in your project root:
 
@@ -142,13 +157,13 @@ Create `firebase.json` in your project root:
 }
 ```
 
-## 📊 Monitoring
+## Monitoring
 
 ### Health Checks
 
-- **Basic health**: `https://your-service-url/health`
-- **API status**: `https://your-service-url/`
-- **API docs**: `https://your-service-url/docs`
+- Basic health: `https://your-service-url/health`
+- API status: `https://your-service-url/`
+- API docs: `https://your-service-url/docs`
 
 ### Cloud Run Console
 
@@ -162,7 +177,7 @@ Key metrics to watch:
 - Memory usage
 - CPU utilization
 
-## 🔒 Security
+## Security
 
 ### Production Checklist
 
@@ -182,27 +197,27 @@ Never commit sensitive data:
 
 Use Cloud Run environment variables or Secret Manager.
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
-1. **Build Fails**
+1. Build Fails
    ```bash
    # Check Dockerfile syntax
    docker build -t test .
    ```
 
-2. **Service Won't Start**
+2. Service Won't Start
    ```bash
    # Check logs
    gcloud run services logs read fitquest-api --region us-central1
    ```
 
-3. **CORS Errors**
+3. CORS Errors
    - Verify CORS_ORIGINS environment variable
    - Check frontend domain configuration
 
-4. **Firebase Auth Issues**
+4. Firebase Auth Issues
    - Verify service account permissions
    - Check GOOGLE_APPLICATION_CREDENTIALS path
 
@@ -224,24 +239,24 @@ gcloud run services logs read fitquest-api --region us-central1 --limit 50
 gcloud run services delete fitquest-api --region us-central1
 ```
 
-## 📈 Scaling
+## Scaling
 
 Cloud Run automatically scales based on traffic:
 
-- **Min instances**: 0 (scales to zero when not in use)
-- **Max instances**: 10 (adjust based on expected traffic)
-- **Concurrency**: 80 requests per instance
-- **Memory**: 512Mi (increase if needed)
-- **CPU**: 1 vCPU (increase for compute-heavy operations)
+- Min instances: 0 (scales to zero when not in use)
+- Max instances: 10 (adjust based on expected traffic)
+- Concurrency: 80 requests per instance
+- Memory: 512Mi (increase if needed)
+- CPU: 1 vCPU (increase for compute-heavy operations)
 
-## 💰 Cost Optimization
+## Cost Optimization
 
 - Use minimum resources for development
 - Scale to zero when not in use
 - Monitor usage in GCP Console
 - Set up billing alerts
 
-## 🔄 CI/CD Integration
+## CI/CD Integration
 
 For automated deployments, integrate with:
 - GitHub Actions
@@ -265,7 +280,7 @@ jobs:
           ./deploy.sh
 ```
 
-## 📞 Support
+## Support
 
 For issues:
 1. Check Cloud Run logs

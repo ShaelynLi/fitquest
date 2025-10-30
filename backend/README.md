@@ -6,12 +6,12 @@ FastAPI-based RESTful API providing authentication, workout tracking, nutrition 
 
 ## Tech Stack
 
-- **FastAPI** 0.116.1 - Web framework
-- **Uvicorn** 0.35.0 - ASGI server
-- **Firebase Admin SDK** 7.1.0 - Authentication & Firestore
-- **HTTPX** 0.28.1 - HTTP client
-- **Pydantic** - Data validation
-- **Python** 3.9+
+- FastAPI 0.116.1 - Web framework
+- Uvicorn 0.35.0 - ASGI server
+- Firebase Admin SDK 7.1.0 - Authentication & Firestore
+- HTTPX 0.28.1 - HTTP client
+- Pydantic - Data validation
+- Python 3.9+
 
 ---
 
@@ -43,19 +43,19 @@ Main packages:
 
 ### 3. Firebase Configuration
 
-**Get Service Account Key:**
+Get Service Account Key:
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Project Settings → Service Accounts
 3. Generate New Private Key
 4. Download JSON file
 
-**Place Service Account File:**
+Place Service Account File:
 ```bash
 mkdir -p config
 mv ~/Downloads/your-firebase-key.json config/firebase_service_account.json
 ```
 
-**Get Firebase Web API Key:**
+Get Firebase Web API Key:
 1. Firebase Console → Project Settings → General
 2. Copy Web API Key
 
@@ -89,7 +89,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 Server runs at `http://localhost:8000`
 
-**Available endpoints:**
+Available endpoints:
 - API root: http://localhost:8000/
 - Interactive docs: http://localhost:8000/docs
 - Health check: http://localhost:8000/health
@@ -104,10 +104,11 @@ backend/
 │   ├── main.py                 # FastAPI app entry, CORS, route registration
 │   │
 │   ├── api/                    # API route modules
-│   │   ├── auth.py            # Authentication (register, login, verify)
-│   │   ├── users.py           # User management
-│   │   ├── workout.py         # Workout tracking
-│   │   └── foods.py           # Food search and nutrition logging
+│   │   ├── auth.py            # Authentication (register, login, verify, change password)
+│   │   ├── users.py           # User management and profile updates
+│   │   ├── workout.py         # Workout tracking (GPS data, history, statistics)
+│   │   ├── foods.py           # Food search and nutrition logging
+│   │   └── gamification.py    # Pet collection, blind boxes, companion management
 │   │
 │   ├── core/                   # Core configuration
 │   │   ├── settings.py        # App settings, env variable loading
@@ -133,7 +134,6 @@ backend/
 │
 ├── Dockerfile                  # Docker image configuration
 ├── deploy.sh                   # Cloud Run deployment script
-├── test-docker.sh             # Local Docker testing
 ├── requirements.txt           # Python dependencies
 ├── requirements-prod.txt      # Production dependencies
 ├── DEPLOYMENT.md              # Deployment guide
@@ -146,17 +146,17 @@ backend/
 
 ### Running the Server
 
-**Development mode with auto-reload:**
+Development mode with auto-reload:
 ```bash
 uvicorn app.main:app --reload
 ```
 
-**Specify host and port:**
+Specify host and port:
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**Without reload (production-like):**
+Without reload (production-like):
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
@@ -183,7 +183,8 @@ docker run -p 8080:8080 \
 ### Test Locally
 
 ```bash
-./test-docker.sh
+docker build -t fitquest-api .
+docker run -p 8080:8080 fitquest-api
 ```
 
 ---
@@ -192,12 +193,12 @@ docker run -p 8080:8080 \
 
 ### Google Cloud Run
 
-**Prerequisites:**
+Prerequisites:
 - Install [gcloud CLI](https://cloud.google.com/sdk/docs/install)
 - GCP project with billing enabled
 - Enable Cloud Run and Container Registry APIs
 
-**Deploy:**
+Deploy:
 ```bash
 # Configure project
 export PROJECT_ID="your-gcp-project-id"
@@ -209,7 +210,7 @@ gcloud config set project $PROJECT_ID
 ./deploy.sh
 ```
 
-**Set environment variables in Cloud Run:**
+Set environment variables in Cloud Run:
 ```bash
 gcloud run services update fitquest-api \
   --region us-central1 \
@@ -226,9 +227,9 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed guide.
 
 ### Firebase initialization fails
 
-**Error**: `Could not automatically determine credentials`
+Error: `Could not automatically determine credentials`
 
-**Fix**:
+Fix:
 ```bash
 # Verify file exists
 ls -la config/firebase_service_account.json
@@ -242,14 +243,14 @@ python -m json.tool < config/firebase_service_account.json
 
 ### CORS errors from frontend
 
-**Fix**:
+Fix:
 1. Check `CORS_ORIGINS` in `.env`
 2. Ensure it includes frontend URL
 3. Restart server
 
 ### Port already in use
 
-**Fix**:
+Fix:
 ```bash
 # Use different port
 uvicorn app.main:app --port 8001 --reload

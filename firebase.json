@@ -1,10 +1,14 @@
 {
   "hosting": {
-    "public": "web",
+    "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/__pycache__/**",
+      "**/venv/**",
+      "backend/**",
+      "frontend/**"
     ],
     "rewrites": [
       {

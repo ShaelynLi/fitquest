@@ -2,58 +2,84 @@
 
 A React Native mobile app with FastAPI backend combining fitness tracking and nutrition logging with a pixel-art pet collection game.
 
-**Platform Support: iOS Only**  
-This application currently supports iOS devices and simulators only. Android is not supported at this time.
+Platform Support: iOS Only  
+This application currently supports iOS devices and simulators. Android is not supported.
+
+## Deployment
+
+### Development Environment (Daily Use)
+
+Local development setup:
+- Backend: Mac server (`uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`)
+- Frontend: Expo Go on iOS
+- Database: Firebase (Cloud Firestore + Authentication)
+
+### Production Environment
+
+Cloud deployment:
+- Backend: Google Cloud Run (australia-southeast1)
+- URL: https://fitquest-api-404135822508.australia-southeast1.run.app
+- Status: Deployed September 19, 2025
+- Cost: ~$0/month (scaled to zero)
+
+See [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md) for deployment details.
 
 ---
 
 ## Features
 
-### 🏃 Workout Tracking
-- **Real-time GPS Tracking**: Track your runs with precise GPS location data
-- **Live Metrics**: Distance, pace, duration, and calories burned in real-time
-- **Route Visualization**: View your running route on an interactive map
-- **Workout History**: Access all your past workouts with detailed statistics
-- **Multiple Units**: Support for both metric (km) and imperial (miles) systems
+### Workout Tracking
+- Real-time GPS tracking with precise location data
+- Live metrics: distance, pace, duration, and calories burned
+- Route visualization on interactive map
+- Complete workout history with detailed statistics
+- Weekly statistics tracking (total runs, distance, time)
+- Automatic data sync to Firebase
 
-### 🍎 Nutrition Logging
-- **Food Database Search**: Access to FatSecret's comprehensive food database with millions of items
-- **Barcode Scanning**: Quickly add foods by scanning product barcodes
-- **Meal Categorization**: Organize foods by breakfast, lunch, dinner, and snacks
-- **Macro Tracking**: Monitor calories, protein, carbohydrates, and fats
-- **Daily Summaries**: View your daily nutrition totals and progress toward goals
-- **Custom Foods**: Add your own food items with custom nutrition values
+### Nutrition Logging
+- FatSecret food database integration with millions of items
+- Barcode scanning for quick food entry
+- Meal categorization (breakfast, lunch, dinner, snacks)
+- Macro tracking: calories, protein, carbohydrates, and fats
+- Daily nutrition summaries and progress tracking
+- Custom food entry support
 
-### 🎮 Gamification System
-- **Virtual Pet Companions**: Collect and raise pixel-art pets
-- **XP and Leveling**: Earn experience points by logging meals and completing workouts
-- **Pet Evolution**: Pets evolve through stages (Egg → Young → Adult → Ultimate) based on your level
-- **Interactive Animations**: Engage with your pet through tap interactions
-- **Pet Collection**: Discover and collect multiple unique pet species
-- **Achievement System**: Unlock badges for reaching fitness milestones
+### Gamification System
+- Pokemon collection with animated sprites
+- Blind box reward system based on running distance goals
+- Customizable distance targets per reward
+- Active companion display on home screen
+- Interactive pet animations
+- Collection tracking with rarity-based organization
 
-### 👤 User Management
-- **Email Authentication**: Secure registration and login with email verification
-- **Profile Management**: Track personal metrics (height, weight, age, activity level)
-- **Goal Setting**: Set and track fitness goals (weight loss, muscle gain, maintenance)
-- **Personalized Dashboard**: View all your stats and pet progress in one place
+### User Management
+- Email authentication with verification
+- Profile management (name, gender, birthday, weight, height)
+- Password change functionality
+- Fitness goal setting (weight loss, muscle gain, maintenance)
+- Notification preferences
+- Comprehensive dashboard view
 
-### 📊 Data Visualization
-- **Daily Stats Cards**: Quick overview of today's activities
-- **Weekly/Monthly Trends**: Track your progress over time
-- **Nutrition Charts**: Visual breakdown of macronutrients
-- **Progress Indicators**: Clear visualization of goal achievement
+### Data Visualization
+- Daily stats overview cards
+- Activity timeline with calendar view
+- Weekly running statistics
+- Nutrition progress charts
+- Blind box progress indicator
+- Lifetime distance tracking
 
 ---
 
 ## Quick Start
 
+For reviewers: Production API is already deployed at the URL above. This guide covers local development setup.
+
 ### Prerequisites
 
-- **macOS** (required for iOS development)
+- macOS (required for iOS development)
 - Node.js 18+ and npm
 - Python 3.9+
-- **Xcode** (for iOS simulator)
+- Xcode (for iOS simulator)
 - Firebase project with Authentication and Firestore enabled
 - Expo CLI: `npm install -g @expo/cli`
 
@@ -117,7 +143,7 @@ npx expo start --ios       # iOS simulator (macOS only)
 ```bash
 cd backend
 source venv/bin/activate  # Windows: venv\Scripts\activate
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### Terminal 2: Start Frontend
@@ -127,8 +153,8 @@ npm start
 ```
 
 ### Open App
-- **iOS Simulator**: Press `i` or `npx expo start --ios` (macOS only)
-- **Physical iOS Device**: Scan QR code with Expo Go app
+- iOS Simulator: Press `i` or `npx expo start --ios` (macOS only)
+- Physical iOS Device: Scan QR code with Expo Go app
 
 ---
 
@@ -177,13 +203,13 @@ BACKEND_URL=http://localhost:8000
 
 ## Testing the Application
 
-1. **Start Backend**: Terminal 1 - Run backend server
-2. **Start Frontend**: Terminal 2 - Run `npm start`
-3. **Open App**: Launch on simulator or scan QR code
-4. **Register Account**: Create new user
-5. **Verify Email**: Check inbox for verification
-6. **Login**: Access main app
-7. **Test Features**:
+1. Start Backend: Terminal 1 - Run backend server
+2. Start Frontend: Terminal 2 - Run `npm start`
+3. Open App: Launch on simulator or scan QR code
+4. Register Account: Create new user
+5. Verify Email: Check inbox for verification
+6. Login: Access main app
+7. Test Features:
    - Record a workout (GPS tracking)
    - Log food (search or barcode scan)
    - View pet and stats
@@ -211,20 +237,18 @@ eas submit --platform ios
 
 ## Documentation
 
-- [Backend README](backend/README.md) - Backend setup and structure
-- [Frontend README](frontend/README.md) - Frontend setup and structure
-- [Product Requirements](docs/product_requirement.md) - Feature specifications
-- [Pet Evolution System](docs/pet_evolution_system.md) - Gamification mechanics
-- [Deployment Guide](backend/DEPLOYMENT.md) - Cloud Run deployment
+- [Backend README](backend/README.md) - Backend setup, API documentation, and structure
+- [Frontend README](frontend/README.md) - Frontend setup, dependencies, and architecture
+- [Deployment Guide](backend/DEPLOYMENT.md) - Cloud Run deployment, monitoring, and troubleshooting
 
 ---
 
 ## Tech Stack
 
-**Frontend**: React Native, Expo, React Navigation, Firebase SDK  
-**Backend**: FastAPI, Firebase Admin SDK, Firestore  
-**Services**: Firebase Auth, Cloud Firestore, FatSecret API  
-**Deployment**: Google Cloud Run, Docker
+Frontend: React Native, Expo, React Navigation, Firebase SDK  
+Backend: FastAPI, Firebase Admin SDK, Firestore  
+Services: Firebase Auth, Cloud Firestore, FatSecret API  
+Deployment: Google Cloud Run, Docker
 
 ---
 
@@ -242,3 +266,23 @@ For issues:
 3. Review API docs: `http://localhost:8000/docs`
 4. Check console logs in both backend and frontend terminals
 5. Ensure iOS simulator/device is properly set up
+
+---
+
+## Testing Production API
+
+Production environment is accessible without local setup:
+
+```bash
+# Health check
+curl https://fitquest-api-404135822508.australia-southeast1.run.app/health
+
+# API documentation
+open https://fitquest-api-404135822508.australia-southeast1.run.app/docs
+```
+
+## Additional Documentation
+
+- [backend/README.md](backend/README.md) - Backend setup and API documentation
+- [frontend/README.md](frontend/README.md) - Frontend architecture and setup
+- [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md) - Cloud deployment guide
