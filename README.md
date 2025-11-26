@@ -1,17 +1,27 @@
 # FitQuest - Gamified Health Companion
 
-> **Personal Fork for Portfolio**  
-> Full-stack developer and product co-lead of [FitQuest](https://github.com/1uoyuuu/COMP90018-T8-G2) — a gamified health app that blends fitness tracking, nutrition logging, and a collectible virtual pet system. Owned end-to-end delivery of core features including GPS workout tracking, authentication, and the entire frontend UX (onboarding, home screen, workout & food logs). Designed the cloud architecture (Firebase + Cloud Run), authored the initial Product Requirements Document (PRD), and built the gamification engine: from rarity-based blind box mechanics to animated pet reveal flows.
+> **Make fitness fun, one pixel pet at a time.**  
+> FitQuest is a gamified health companion that turns workouts and meals into a collectible adventure — keeping users motivated through play, not pressure.
+
+A React Native mobile app powered by a FastAPI backend, blending precise fitness tracking, smart nutrition logging, and an original pixel-art pet collection system.
+
+**Platforms**: iOS & Android (via Expo Go)  
+**Tech Stack**: React Native + FastAPI + Firebase + Cloud Run
+
+---
+
+### Personal Fork for Portfolio
+
+As full-stack developer and product co-lead of [FitQuest](https://github.com/1uoyuuu/COMP90018-T8-G2), I owned end-to-end delivery of core features including:
+- GPS workout tracking with real-time metrics
+- Email authentication & profile management
+- Complete frontend UX (onboarding, home, logs)
+- Gamification engine: rarity-based blind boxes, animated pet reveals
+- Cloud architecture (Firebase Auth/Firestore + Cloud Run)
+- Initial Product Requirements Document (PRD)
 
 > **个人作品集说明**  
 > FitQuest 游戏化健康 App 的全栈开发者兼产品联合负责人。主导核心功能的端到端实现，包括运动追踪、用户认证、完整用户界面（注册引导、主页、运动/饮食记录页）及虚拟宠物收集系统。设计云架构（Firebase + Cloud Run），撰写初始产品需求文档（PRD），并打造游戏化引擎：从稀有度盲盒机制到宠物开箱动画体验，全程融合行为洞察与交互设计。
-
-**Make fitness fun, one pixel pet at a time.**  
-FitQuest is a gamified health companion that turns workouts and meals into a collectible adventure — keeping users motivated through play, not pressure.
-
-A React Native mobile app with FastAPI backend combining fitness tracking and nutrition logging with a pixel-art pet collection game.
-
-Platform Support: iOS and Android
 
 ## Deployment
 
@@ -84,7 +94,7 @@ For reviewers: Production API is already deployed at the URL above. This guide c
 
 ### Prerequisites
 
-- macOS (required for iOS development)
+- macOS (required to run iOS simulator; Android works on Windows/Linux/macOS)
 - Node.js 18+ and npm
 - Python 3.9+
 - Xcode (for iOS simulator)
@@ -138,9 +148,10 @@ npm install
 # Start dev server
 npm start
 
-# Run on iOS device/simulator
-npx expo start --ios       # iOS simulator (macOS only)
-# Or scan QR code with Expo Go app on physical iOS device
+# Launch the app:
+# - On iOS simulator (macOS): press 'i' or run `npx expo start --ios`
+# - On Android emulator: press 'a' or run `npx expo start --android` (if configured)
+# - On any physical device (iOS or Android): scan the QR code with Expo Go
 ```
 
 ---
@@ -161,8 +172,9 @@ npm start
 ```
 
 ### Open App
-- iOS Simulator: Press `i` or `npx expo start --ios` (macOS only)
-- Physical iOS Device: Scan QR code with Expo Go app
+- **iOS Simulator**: Press `i` or run `npx expo start --ios` (macOS only)
+- **Android Emulator**: Press `a` or run `npx expo start --android` (requires Android SDK setup)
+- **Physical Device (iOS or Android)**: Scan the QR code displayed in the terminal using the **Expo Go** app
 
 ---
 
@@ -239,6 +251,9 @@ See `backend/DEPLOYMENT.md` for details.
 cd frontend
 eas build --platform ios
 eas submit --platform ios
+
+# Currently building for iOS only via EAS
+# Android EAS build is possible but not yet submitted to Play Store
 ```
 
 ---
