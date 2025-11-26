@@ -1,9 +1,17 @@
 # FitQuest - Gamified Health Companion
 
+> **Personal Fork for Portfolio**  
+> Full-stack developer and product co-lead of [FitQuest](https://github.com/1uoyuuu/COMP90018-T8-G2) — a gamified health app that blends fitness tracking, nutrition logging, and a collectible virtual pet system. Owned end-to-end delivery of core features including GPS workout tracking, authentication, and the entire frontend UX (onboarding, home screen, workout & food logs). Designed the cloud architecture (Firebase + Cloud Run), authored the initial Product Requirements Document (PRD), and built the gamification engine: from rarity-based blind box mechanics to animated pet reveal flows.
+
+> **个人作品集说明**  
+> FitQuest 游戏化健康 App 的全栈开发者兼产品联合负责人。主导核心功能的端到端实现，包括运动追踪、用户认证、完整用户界面（注册引导、主页、运动/饮食记录页）及虚拟宠物收集系统。设计云架构（Firebase + Cloud Run），撰写初始产品需求文档（PRD），并打造游戏化引擎：从稀有度盲盒机制到宠物开箱动画体验，全程融合行为洞察与交互设计。
+
+> **Make fitness fun, one pixel pet at a time.**  
+> FitQuest is a gamified health companion that turns workouts and meals into a collectible adventure — keeping users motivated through play, not pressure.
+
 A React Native mobile app with FastAPI backend combining fitness tracking and nutrition logging with a pixel-art pet collection game.
 
-Platform Support: iOS Only  
-This application currently supports iOS devices and simulators. Android is not supported.
+Platform Support: iOS and Android
 
 ## Deployment
 
@@ -45,7 +53,7 @@ See [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md) for deployment details.
 - Custom food entry support
 
 ### Gamification System
-- Pokemon collection with animated sprites
+- Collectible pixel-art pets with animated sprites (inspired by classic monster-collection games)
 - Blind box reward system based on running distance goals
 - Customizable distance targets per reward
 - Active companion display on home screen
